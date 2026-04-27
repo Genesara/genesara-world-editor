@@ -47,7 +47,7 @@ export function WorldsScreen({ onEnterWorld, onLogout }: Props) {
         <div className={styles.brand}>
           <span className={styles.logo} aria-hidden />
           <div>
-            <div className={styles.title}>AgenticRPG</div>
+            <div className={styles.title}>Genesara</div>
             <div className={styles.subtitle}>Worlds</div>
           </div>
         </div>

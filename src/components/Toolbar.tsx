@@ -35,8 +35,8 @@ export function Toolbar({
       <div className={styles.brand}>
         <span className={styles.logo} aria-hidden />
         <div>
-          <div className={styles.title}>AgenticRPG</div>
-          <div className={styles.subtitle}>{breadcrumb ?? 'Map Editor'}</div>
+          <div className={styles.title}>Genesara</div>
+          <div className={styles.subtitle}>{breadcrumb ?? 'World Editor'}</div>
         </div>
       </div>
       <div className={styles.group}>

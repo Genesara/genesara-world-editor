@@ -37,7 +37,7 @@ export function LoginScreen({ onLoggedIn }: Props) {
       <form className={styles.card} onSubmit={submit}>
         <div className={styles.brand}>
           <span className={styles.logo} aria-hidden />
-          <div className={styles.title}>AgenticRPG · Admin</div>
+          <div className={styles.title}>Genesara · Admin</div>
         </div>
         <div className={styles.subtitle}>Sign in to manage worlds and maps.</div>
 

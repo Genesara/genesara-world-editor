@@ -1,6 +1,6 @@
-# AgenticRPG Map Editor
+# Genesara World Editor
 
-Browser-based world builder for the AgenticRPG MMORPG. Sketches a planet as a Goldberg polyhedron, lets you assign biomes and climates per face, then drills down into per-face hex grids for fine-grained terrain painting.
+Browser-based world builder for the Genesara MMORPG. Sketches a planet as a Goldberg polyhedron, lets you assign biomes and climates per face, then drills down into per-face hex grids for fine-grained terrain painting.
 
 Built with React, Vite, TypeScript, `react-three-fiber` for the 3D globe, `react-konva` for the 2D hex canvas, `honeycomb-grid` for hex math, and `simplex-noise` for procedural seeding. MSW provides an in-browser mock API so the editor runs without a live backend during development.
 
@@ -67,7 +67,7 @@ src/
 
 The editor is designed to run as a static bundle (e.g. on GitHub Pages) and target any user's self-hosted backend. The runtime resolution order is:
 
-1. Value saved in `localStorage` under `agentic-rpg:api-base-url`
+1. Value saved in `localStorage` under `genesara:api-base-url`
 2. `VITE_API_BASE_URL` baked into the build
 3. None — the first-launch screen is shown
 

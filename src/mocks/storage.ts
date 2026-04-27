@@ -1,6 +1,6 @@
 import type { GlobeNode, Node, World } from '../types';
 
-const PREFIX = 'agentic-rpg';
+const PREFIX = 'genesara';
 const SCHEMA_VERSION = 2;
 
 function k(...parts: (string | number)[]): string {

@@ -21,7 +21,7 @@ export function FirstLaunchScreen() {
       <form className={styles.card} onSubmit={submit}>
         <div className={styles.brand}>
           <span className={styles.logo} aria-hidden />
-          <div className={styles.title}>AgenticRPG · Setup</div>
+          <div className={styles.title}>Genesara · Setup</div>
         </div>
         <div className={styles.subtitle}>
           Welcome! Point this editor at the backend you want to manage. The URL is

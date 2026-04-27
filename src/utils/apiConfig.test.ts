@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const LS_KEY = 'agentic-rpg:api-base-url';
+const LS_KEY = 'genesara:api-base-url';
 
 async function loadModule(envValue: string | undefined) {
   vi.resetModules();

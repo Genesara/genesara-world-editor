@@ -4,7 +4,7 @@
  * backend. The Vite env var is used only as a build-time default suggestion.
  */
 
-const LS_KEY = 'agentic-rpg:api-base-url';
+const LS_KEY = 'genesara:api-base-url';
 export const API_BASE_URL_CHANGED_EVENT = 'config:base-url-changed';
 
 const RAW_ENV_DEFAULT: string | undefined = import.meta.env.VITE_API_BASE_URL;

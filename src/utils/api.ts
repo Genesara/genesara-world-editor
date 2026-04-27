@@ -6,7 +6,7 @@
 
 import { getApiBaseUrlOrThrow } from './apiConfig';
 
-const TOKEN_KEY = 'agentic-rpg:admin-token';
+const TOKEN_KEY = 'genesara:admin-token';
 
 export function getToken(): string | null {
   try {
