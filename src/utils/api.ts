@@ -4,6 +4,8 @@
  * an `auth:logout` event so the app can redirect to the login screen.
  */
 
+import { getApiBaseUrlOrThrow } from './apiConfig';
+
 const TOKEN_KEY = 'agentic-rpg:admin-token';
 
 export function getToken(): string | null {
@@ -36,8 +38,6 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   return res;
 }
 
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
-
 export interface LoginResult {
   token: string;
 }
@@ -47,7 +47,7 @@ export interface LoginResult {
  */
 export async function login(username: string, password: string): Promise<LoginResult> {
   const basic = btoa(`${username}:${password}`);
-  const res = await fetch(`${BASE_URL}/admin/login`, {
+  const res = await fetch(`${getApiBaseUrlOrThrow()}/admin/login`, {
     method: 'POST',
     headers: { Authorization: `Basic ${basic}` },
   });

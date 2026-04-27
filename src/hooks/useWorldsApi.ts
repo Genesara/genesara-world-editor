@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { World } from '../types';
 import { authFetch } from '../utils/api';
-
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+import { getApiBaseUrlOrThrow } from '../utils/apiConfig';
 
 export interface CreateWorldInput {
   name: string;
@@ -29,7 +28,7 @@ export function useWorldsApi(): WorldsApi {
     setLoading(true);
     setError(null);
     try {
-      const res = await authFetch(`${BASE_URL}/api/worlds`);
+      const res = await authFetch(`${getApiBaseUrlOrThrow()}/api/worlds`);
       if (!res.ok) throw new Error(`List worlds failed: ${res.status} ${res.statusText}`);
       return (await res.json()) as World[];
     } catch (err) {
@@ -45,7 +44,7 @@ export function useWorldsApi(): WorldsApi {
     setLoading(true);
     setError(null);
     try {
-      const res = await authFetch(`${BASE_URL}/api/worlds/${id}`);
+      const res = await authFetch(`${getApiBaseUrlOrThrow()}/api/worlds/${id}`);
       if (!res.ok) throw new Error(`Get world failed: ${res.status} ${res.statusText}`);
       return (await res.json()) as World;
     } catch (err) {
@@ -61,7 +60,7 @@ export function useWorldsApi(): WorldsApi {
     setLoading(true);
     setError(null);
     try {
-      const res = await authFetch(`${BASE_URL}/api/worlds`, {
+      const res = await authFetch(`${getApiBaseUrlOrThrow()}/api/worlds`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),

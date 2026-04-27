@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { Node } from '../types';
 import { authFetch } from '../utils/api';
-
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+import { getApiBaseUrlOrThrow } from '../utils/apiConfig';
 
 export interface MapApiScope {
   worldId: number;
@@ -22,15 +21,9 @@ export function useMapApi(scope: MapApiScope): MapApi {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const url = useMemo(() => {
-    return `${BASE_URL}/api/worlds/${scope.worldId}/nodes/${scope.sphereIndex}/hexes`;
+  const buildUrl = useCallback(() => {
+    return `${getApiBaseUrlOrThrow()}/api/worlds/${scope.worldId}/nodes/${scope.sphereIndex}/hexes`;
   }, [scope.worldId, scope.sphereIndex]);
-
-  const loadUrl = useMemo(() => {
-    const radius = scope.initialRadius;
-    if (radius == null) return url;
-    return `${url}?radius=${radius}`;
-  }, [url, scope.initialRadius]);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -38,7 +31,10 @@ export function useMapApi(scope: MapApiScope): MapApi {
     setLoading(true);
     setError(null);
     try {
-      const res = await authFetch(loadUrl);
+      const base = buildUrl();
+      const radius = scope.initialRadius;
+      const target = radius == null ? base : `${base}?radius=${radius}`;
+      const res = await authFetch(target);
       if (!res.ok) throw new Error(`Load failed: ${res.status} ${res.statusText}`);
       return (await res.json()) as Node[];
     } catch (err) {
@@ -48,14 +44,14 @@ export function useMapApi(scope: MapApiScope): MapApi {
     } finally {
       setLoading(false);
     }
-  }, [loadUrl]);
+  }, [buildUrl, scope.initialRadius]);
 
   const save = useCallback(
     async (nodes: Node[]): Promise<{ updated: number }> => {
       setLoading(true);
       setError(null);
       try {
-        const res = await authFetch(url, {
+        const res = await authFetch(buildUrl(), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nodes }),
@@ -70,7 +66,7 @@ export function useMapApi(scope: MapApiScope): MapApi {
         setLoading(false);
       }
     },
-    [url],
+    [buildUrl],
   );
 
   return { loading, error, clearError, load, save };

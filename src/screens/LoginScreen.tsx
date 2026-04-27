@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { login } from '../utils/api';
+import { SettingsDialog } from '../components/SettingsDialog';
 import styles from './LoginScreen.module.css';
 
 interface Props {
@@ -11,6 +12,7 @@ export function LoginScreen({ onLoggedIn }: Props) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,9 +72,28 @@ export function LoginScreen({ onLoggedIn }: Props) {
           <div className={styles.hint}>
             Bootstrap admin is created from the server's<br />
             <code>ADMIN_BOOTSTRAP_USERNAME</code> / <code>ADMIN_BOOTSTRAP_PASSWORD</code> env vars.
+            <br />
+            <button
+              type="button"
+              onClick={() => setShowSettings(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                marginTop: 8,
+                color: '#6aaaff',
+                fontSize: 11,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                textDecoration: 'underline',
+              }}
+            >
+              Backend settings
+            </button>
           </div>
         </div>
       </form>
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

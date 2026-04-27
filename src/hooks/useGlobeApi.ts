@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { Biome, ClimateType, GlobeNode, Vec3 } from '../types';
 import { authFetch } from '../utils/api';
-
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+import { getApiBaseUrlOrThrow } from '../utils/apiConfig';
 
 export interface CreateNodeInput {
   sphere_index: number;
@@ -43,7 +42,7 @@ export function useGlobeApi(): GlobeApi {
     setLoading(true);
     setError(null);
     try {
-      const res = await authFetch(`${BASE_URL}/api/worlds/${worldId}/nodes`);
+      const res = await authFetch(`${getApiBaseUrlOrThrow()}/api/worlds/${worldId}/nodes`);
       if (!res.ok) {
         throw new Error(`List globe nodes failed: ${res.status} ${res.statusText}`);
       }
@@ -62,7 +61,7 @@ export function useGlobeApi(): GlobeApi {
       setLoading(true);
       setError(null);
       try {
-        const res = await authFetch(`${BASE_URL}/api/worlds/${worldId}/nodes/${sphereIndex}`);
+        const res = await authFetch(`${getApiBaseUrlOrThrow()}/api/worlds/${worldId}/nodes/${sphereIndex}`);
         if (!res.ok) {
           throw new Error(`Get globe node failed: ${res.status} ${res.statusText}`);
         }
@@ -83,7 +82,7 @@ export function useGlobeApi(): GlobeApi {
       setLoading(true);
       setError(null);
       try {
-        const res = await authFetch(`${BASE_URL}/api/worlds/${worldId}/nodes`, {
+        const res = await authFetch(`${getApiBaseUrlOrThrow()}/api/worlds/${worldId}/nodes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(input),
@@ -113,7 +112,7 @@ export function useGlobeApi(): GlobeApi {
       setError(null);
       try {
         const res = await authFetch(
-          `${BASE_URL}/api/worlds/${worldId}/nodes/${sphereIndex}`,
+          `${getApiBaseUrlOrThrow()}/api/worlds/${worldId}/nodes/${sphereIndex}`,
           {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },

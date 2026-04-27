@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { World } from '../types';
 import { useWorldsApi } from '../hooks/useWorldsApi';
 import { NewWorldDialog } from '../components/globe/NewWorldDialog';
+import { SettingsDialog } from '../components/SettingsDialog';
 import styles from './WorldsScreen.module.css';
 
 interface Props {
@@ -13,6 +14,7 @@ export function WorldsScreen({ onEnterWorld, onLogout }: Props) {
   const api = useWorldsApi();
   const [worlds, setWorlds] = useState<World[]>([]);
   const [showDialog, setShowDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
@@ -57,6 +59,15 @@ export function WorldsScreen({ onEnterWorld, onLogout }: Props) {
             disabled={api.loading}
           >
             + New World
+          </button>
+          <button
+            type="button"
+            className={styles.newBtn}
+            onClick={() => setShowSettings(true)}
+            style={{ background: 'transparent', border: '1px solid #2a3548', color: '#99a4b6' }}
+            title="Settings"
+          >
+            Settings
           </button>
           <button
             type="button"
@@ -114,6 +125,8 @@ export function WorldsScreen({ onEnterWorld, onLogout }: Props) {
           busy={api.loading}
         />
       )}
+
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </div>
   );
 }
