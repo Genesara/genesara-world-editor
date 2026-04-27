@@ -1,0 +1,90 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px;
+  background: #10141b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #e8ecf1;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #6aa7ff 0%, #4fb87a 100%);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.title {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+}
+
+.subtitle {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #8892a6;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.btn {
+  background: #1b2029;
+  color: #d8dee9;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #232a35;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.save {
+  background: #1e4a2a;
+  border-color: #2d6b3e;
+  color: #e6f5ea;
+}
+
+.save:hover:not(:disabled) {
+  background: #2d6b3e;
+  border-color: #3a8a50;
+}
+
+.save:disabled {
+  background: #1b2029;
+  border-color: rgba(255, 255, 255, 0.07);
+  color: #5c6781;
+}

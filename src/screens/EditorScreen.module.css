@@ -1,0 +1,44 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: #0d1117;
+  color: #e8ecf1;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.toast {
+  position: fixed;
+  bottom: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid;
+  z-index: 10;
+  max-width: 520px;
+}
+
+.toastInfo {
+  background: #1b2c3e;
+  border-color: #3a6a8e;
+  color: #cfe3f3;
+}
+
+.toastError {
+  background: #3e1b1b;
+  border-color: #a04a4a;
+  color: #f6d8d8;
+}

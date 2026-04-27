@@ -1,0 +1,130 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 11, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  backdrop-filter: blur(2px);
+}
+
+.dialog {
+  background: #0f1620;
+  color: #e8ecf1;
+  border: 1px solid #2a3442;
+  border-radius: 10px;
+  padding: 24px;
+  width: min(520px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: #9aa4b2;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.hint {
+  font-weight: 400;
+  color: #6c7685;
+  font-size: 11px;
+}
+
+.input {
+  background: #0a0f17;
+  border: 1px solid #2a3442;
+  color: #e8ecf1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4a7fbf;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.preset {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #2a3442;
+  background: #141b25;
+  color: #c4cbd5;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.preset:hover {
+  border-color: #3a4a5c;
+}
+
+.presetActive {
+  background: #1b2c3e;
+  border-color: #3a6a8e;
+  color: #cfe3f3;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #2a3442;
+  background: #1b2029;
+  color: #e8ecf1;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: #3a4a5c;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: #1f3d2a;
+  border-color: #3a6a4a;
+  color: #c8e8d4;
+}
+
+.primary:hover:not(:disabled) {
+  border-color: #4fb87a;
+}

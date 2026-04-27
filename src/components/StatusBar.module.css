@@ -1,0 +1,34 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 5px 14px;
+  background: #10141b;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #c7cfde;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.label {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: #5c6781;
+}
+
+.value {
+  color: #e8ecf1;
+  font-weight: 500;
+}
+
+.sep {
+  flex: 1;
+}

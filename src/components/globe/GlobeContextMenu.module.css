@@ -1,0 +1,37 @@
+.menu {
+  position: fixed;
+  z-index: 25;
+  min-width: 180px;
+  background: #0f1620;
+  border: 1px solid #2a3442;
+  border-radius: 8px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  background: transparent;
+  border: none;
+  color: #e8ecf1;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: #1b2c3e;
+}
+
+.destructive {
+  color: #f6b8b8;
+}
+
+.destructive:hover {
+  background: #3e1b1b;
+  color: #fce0e0;
+}
