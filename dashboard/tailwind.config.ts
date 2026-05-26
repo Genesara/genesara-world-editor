@@ -7,6 +7,7 @@ const config: Config = {
     extend: {
       colors: {
         bg: {
+          canvas: 'hsl(220 14% 4%)',
           base: 'hsl(220 14% 6%)',
           subtle: 'hsl(220 14% 8%)',
           raised: 'hsl(220 14% 10%)',

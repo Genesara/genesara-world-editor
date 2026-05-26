@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { InlineError } from '@/components/ui/InlineError';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Empty } from '@/components/ui/Empty';
+import { Select } from '@/components/ui/Select';
 import { cn } from '@/lib/cn';
 import {
   useSetAuthority,
@@ -121,19 +122,13 @@ function OutlawControl({
         <span className="mono text-xs text-fg-subtle">{currentState}</span>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        <select
+        <Select
           value={stateInput}
-          onChange={(e) => setStateInput(e.target.value)}
-          className={cn(
-            'h-7 rounded border border-border-default bg-bg-base px-2 text-xs text-fg-default',
-            'hover:border-border-strong focus-visible:border-accent',
-            'transition-colors duration-150',
-          )}
-        >
-          {OUTLAW_STATES.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+          onValueChange={setStateInput}
+          options={OUTLAW_STATES.map((s) => ({ value: s }))}
+          mono
+          className="min-w-[120px]"
+        />
         <Input
           mono
           type="number"

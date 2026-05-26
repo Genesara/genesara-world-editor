@@ -392,7 +392,7 @@ export function GlobeScene({
 
   return (
     <Canvas
-      style={{ background: 'hsl(220 14% 4%)' }}
+      className="bg-bg-canvas"
       camera={{ position: [0, 0, 2.8], fov: 45 }}
       gl={{ antialias: true }}
     >

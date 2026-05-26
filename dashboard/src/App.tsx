@@ -13,6 +13,8 @@ import { AgentPanelView } from '@/views/agentPanel/AgentPanelView';
 import { NodeDetailView } from '@/views/nodeDetail/NodeDetailView';
 import { WorldMapView } from '@/views/worldMap/WorldMapView';
 import { AuditLogView } from '@/views/auditLog/AuditLogView';
+import { NpcZonesView } from '@/views/npcZones/NpcZonesView';
+import { FeedReplayView } from '@/views/feedReplay/FeedReplayView';
 
 export function App() {
   const queryClient = useMemo(() => createQueryClient(), []);
@@ -39,6 +41,8 @@ export function App() {
                   <Route path="nodes" element={<NodeDetailView />} />
                   <Route path="nodes/:nodeId" element={<NodeDetailView />} />
                   <Route path="map" element={<WorldMapView />} />
+                  <Route path="zones" element={<NpcZonesView />} />
+                  <Route path="replay" element={<FeedReplayView />} />
                   <Route path="audit" element={<AuditLogView />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/feed" replace />} />
