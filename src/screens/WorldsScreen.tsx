@@ -8,9 +8,11 @@ import styles from './WorldsScreen.module.css';
 interface Props {
   onEnterWorld: (worldId: number) => void;
   onLogout: () => void;
+  onAdmin?: () => void;
+  onOperations?: () => void;
 }
 
-export function WorldsScreen({ onEnterWorld, onLogout }: Props) {
+export function WorldsScreen({ onEnterWorld, onLogout, onAdmin, onOperations }: Props) {
   const api = useWorldsApi();
   const [worlds, setWorlds] = useState<World[]>([]);
   const [showDialog, setShowDialog] = useState(false);
@@ -45,35 +47,45 @@ export function WorldsScreen({ onEnterWorld, onLogout }: Props) {
     <div className={styles.root}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <span className={styles.logo} aria-hidden />
-          <div>
-            <div className={styles.title}>Genesara</div>
-            <div className={styles.subtitle}>Worlds</div>
-          </div>
+          <div className={styles.title}>Genesara</div>
+          <div className={styles.subtitle}>Worlds</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className={styles.actions}>
           <button
             type="button"
-            className={styles.newBtn}
+            className={styles.primaryBtn}
             onClick={() => setShowDialog(true)}
             disabled={api.loading}
           >
             + New World
           </button>
+          {onAdmin && (
+            <button type="button" className={styles.ghostBtn} onClick={onAdmin} title="Admin">
+              Admin
+            </button>
+          )}
+          {onOperations && (
+            <button
+              type="button"
+              className={styles.ghostBtn}
+              onClick={onOperations}
+              title="Operator dashboard (live world)"
+            >
+              Operations
+            </button>
+          )}
           <button
             type="button"
-            className={styles.newBtn}
+            className={styles.ghostBtn}
             onClick={() => setShowSettings(true)}
-            style={{ background: 'transparent', border: '1px solid #2a3548', color: '#99a4b6' }}
             title="Settings"
           >
             Settings
           </button>
           <button
             type="button"
-            className={styles.newBtn}
+            className={styles.ghostBtn}
             onClick={onLogout}
-            style={{ background: 'transparent', border: '1px solid #2a3548', color: '#99a4b6' }}
             title="Sign out"
           >
             Sign out
@@ -91,6 +103,7 @@ export function WorldsScreen({ onEnterWorld, onLogout }: Props) {
             </p>
           </div>
         )}
+        {worlds.length > 0 && <div className={styles.eyebrow}>your worlds · {worlds.length}</div>}
         <div className={styles.grid}>
           {worlds.map((w) => (
             <button
