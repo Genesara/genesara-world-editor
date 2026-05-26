@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    font-feature-settings: 'cv11', 'ss01', 'ss02';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: theme('colors.border.default');
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: theme('boxShadow.focus');
+    border-radius: theme('borderRadius.DEFAULT');
+  }
+
+  ::selection {
+    background-color: theme('colors.accent.subtle');
+    color: theme('colors.fg.strong');
+  }
+
+  /* Scrollbar styling for webkit */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.border.default');
+    border-radius: 999px;
+    border: 2px solid theme('colors.bg.base');
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.border.strong');
+  }
+}
+
+@layer components {
+  .surface-1 {
+    @apply bg-bg-subtle border border-border-subtle rounded-md;
+  }
+  .surface-2 {
+    @apply bg-bg-raised border border-border-default rounded-md;
+  }
+  .surface-overlay {
+    @apply bg-bg-overlay border border-border-default rounded-lg shadow-elevated;
+  }
+  .mono {
+    @apply font-mono text-xs tabular-nums;
+  }
+  .label-muted {
+    @apply text-xs uppercase tracking-wider text-fg-muted;
+  }
+}
