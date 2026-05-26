@@ -19,6 +19,14 @@ export default defineConfig({
       '/admin': {
         target: SPRING_BACKEND,
         changeOrigin: true,
+        configure: (proxy) => {
+          // Strip the browser Origin header so Spring's CORS filter sees a same-origin request.
+          // (Backend CORS allow-list doesn't include http://localhost:5174.)
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
       },
     },
   },
