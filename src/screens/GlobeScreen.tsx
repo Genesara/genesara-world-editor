@@ -16,6 +16,8 @@ import { biomeColorFor } from '../constants/biomeColors';
 import { biomeLabel } from '../constants/biomeGroups';
 import { climateColorFor } from '../constants/climateColors';
 import { climateLabel } from '../constants/climateGroups';
+import { FeedDock } from '../components/feed/FeedDock';
+import { usePersistedToggle } from '../components/feed/usePersistedToggle';
 import styles from './GlobeScreen.module.css';
 
 interface Props {
@@ -47,6 +49,7 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = usePersistedToggle('feedDock.open', false);
   const [highlightClimate, setHighlightClimate] = useState<ClimateType | null>(null);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -240,6 +243,14 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         >
           {autoRotate ? '⏸ Rotation' : '▶ Rotation'}
         </button>
+        <button
+          type="button"
+          className={`${styles.toggle} ${feedOpen ? styles.toggleActive : ''}`}
+          onClick={() => setFeedOpen(!feedOpen)}
+          title="Toggle live feed"
+        >
+          ▤ Feed
+        </button>
       </header>
 
       <div
@@ -372,6 +383,8 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      <FeedDock open={feedOpen} onOpenChange={setFeedOpen} topOffset={58} />
     </div>
   );
 }

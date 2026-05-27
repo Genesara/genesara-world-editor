@@ -9,10 +9,9 @@ interface Props {
   onEnterWorld: (worldId: number) => void;
   onLogout: () => void;
   onAdmin?: () => void;
-  onOperations?: () => void;
 }
 
-export function WorldsScreen({ onEnterWorld, onLogout, onAdmin, onOperations }: Props) {
+export function WorldsScreen({ onEnterWorld, onLogout, onAdmin }: Props) {
   const api = useWorldsApi();
   const [worlds, setWorlds] = useState<World[]>([]);
   const [showDialog, setShowDialog] = useState(false);
@@ -62,16 +61,6 @@ export function WorldsScreen({ onEnterWorld, onLogout, onAdmin, onOperations }: 
           {onAdmin && (
             <button type="button" className={styles.ghostBtn} onClick={onAdmin} title="Admin">
               Admin
-            </button>
-          )}
-          {onOperations && (
-            <button
-              type="button"
-              className={styles.ghostBtn}
-              onClick={onOperations}
-              title="Operator dashboard (live world)"
-            >
-              Operations
             </button>
           )}
           <button

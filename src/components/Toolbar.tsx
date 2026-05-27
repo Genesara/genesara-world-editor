@@ -1,4 +1,7 @@
+import type { ReactNode } from 'react';
 import styles from './Toolbar.module.css';
+
+export type EditorView = '2d' | '3d';
 
 interface Props {
   dirtyCount: number;
@@ -11,6 +14,10 @@ interface Props {
   onSave: () => void;
   onBack?: () => void;
   breadcrumb?: string;
+  view: EditorView;
+  onViewChange: (view: EditorView) => void;
+  /** Optional toggles rendered before the Save button (Feed, Live overlay, History, etc.) */
+  rightExtras?: ReactNode;
 }
 
 export function Toolbar({
@@ -24,6 +31,9 @@ export function Toolbar({
   onSave,
   onBack,
   breadcrumb,
+  view,
+  onViewChange,
+  rightExtras,
 }: Props) {
   return (
     <header className={styles.root}>
@@ -33,11 +43,8 @@ export function Toolbar({
         </button>
       )}
       <div className={styles.brand}>
-        <span className={styles.logo} aria-hidden />
-        <div>
-          <div className={styles.title}>Genesara</div>
-          <div className={styles.subtitle}>{breadcrumb ?? 'World Editor'}</div>
-        </div>
+        <div className={styles.title}>Genesara</div>
+        <div className={styles.subtitle}>{breadcrumb ?? 'World Editor'}</div>
       </div>
       <div className={styles.group}>
         <button type="button" className={styles.btn} onClick={onLoad} disabled={loading}>
@@ -58,7 +65,28 @@ export function Toolbar({
           Import
         </button>
       </div>
+      <div className={styles.viewToggle} role="group" aria-label="View mode">
+        <button
+          type="button"
+          className={`${styles.btn} ${view === '3d' ? styles.active : ''}`}
+          onClick={() => onViewChange('3d')}
+          aria-pressed={view === '3d'}
+          title="Isometric 3D view"
+        >
+          3D
+        </button>
+        <button
+          type="button"
+          className={`${styles.btn} ${view === '2d' ? styles.active : ''}`}
+          onClick={() => onViewChange('2d')}
+          aria-pressed={view === '2d'}
+          title="Top-down 2D view"
+        >
+          2D
+        </button>
+      </div>
       <div className={styles.spacer} />
+      {rightExtras && <div className={styles.group}>{rightExtras}</div>}
       <button
         type="button"
         className={`${styles.btn} ${styles.save}`}

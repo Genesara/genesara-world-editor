@@ -1,18 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { GlobeNode, Node, TerrainType } from '../types';
+import type { GlobeNode, Node, RaceId, StarterNode, TerrainType } from '../types';
 import { MapCanvas } from '../components/MapCanvas';
+import { MapCanvas3D } from '../components/MapCanvas3D';
+import { StarterContextMenu } from '../components/StarterContextMenu';
 import { TerrainSidebar } from '../components/TerrainSidebar';
-import { Toolbar } from '../components/Toolbar';
+import { Toolbar, type EditorView } from '../components/Toolbar';
 import { StatusBar } from '../components/StatusBar';
 import { useHexGrid } from '../hooks/useHexGrid';
 import { useDirtyTracker } from '../hooks/useDirtyTracker';
 import { useMapApi } from '../hooks/useMapApi';
 import { useGlobeApi } from '../hooks/useGlobeApi';
+import { useStarterNodesApi } from '../hooks/useStarterNodesApi';
+import { useWorldsApi } from '../hooks/useWorldsApi';
 import { keyOf } from '../utils/keyOf';
 import { generateMap } from '../utils/generateMap';
 import { downloadJson, pickJsonFile } from '../utils/exportJson';
 import { biomeLabel } from '../constants/biomeGroups';
+import { FeedDock } from '../components/feed/FeedDock';
+import { usePersistedToggle } from '../components/feed/usePersistedToggle';
+import toolbarStyles from '../components/Toolbar.module.css';
 import styles from './EditorScreen.module.css';
+
+interface StarterMenuState {
+  q: number;
+  r: number;
+  tile: Node | null;
+  screenX: number;
+  screenY: number;
+}
 
 const HEX_SIZE = 20;
 
@@ -38,12 +53,19 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
     null,
   );
   const [zoom, setZoom] = useState(1);
+  const [view, setView] = useState<EditorView>('3d');
   const [toast, setToast] = useState<{ kind: 'error' | 'info'; text: string } | null>(null);
   const [globeNode, setGlobeNode] = useState<GlobeNode | null>(null);
+  const [feedOpen, setFeedOpen] = usePersistedToggle('feedDock.open', false);
 
   const dirtyTracker = useDirtyTracker();
   const api = useMapApi({ worldId, sphereIndex, initialRadius: radius });
   const globeApi = useGlobeApi();
+  const worldsApi = useWorldsApi();
+  const starterApi = useStarterNodesApi();
+
+  const [starters, setStarters] = useState<StarterNode[]>([]);
+  const [menu, setMenu] = useState<StarterMenuState | null>(null);
 
   const showToast = useCallback((kind: 'error' | 'info', text: string) => {
     setToast({ kind, text });
@@ -61,17 +83,17 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    globeApi
-      .get(worldId, sphereIndex)
-      .then((n) => {
-        if (!cancelled) setGlobeNode(n);
-      })
-      .catch(() => {
-        /* handled via toast */
-      });
-    api
-      .load()
-      .then((list) => {
+    // Fetch the world first so we can size the hex grid by the user's chosen
+    // node_size (per-node hex radius), then load hexes with that radius. Done
+    // sequentially via async/await so an effect cleanup (StrictMode remount,
+    // worldId change) cancels mid-flight before sending the load request.
+    (async () => {
+      try {
+        const world = await worldsApi.get(worldId);
+        if (cancelled) return;
+        const seed = Math.max(1, Math.min(80, Math.floor(world.node_size)));
+        setRadius(seed);
+        const list = await api.load(seed);
         if (cancelled) return;
         setNodes(nodesToMap(list));
         const maxAbs = list.reduce(
@@ -80,6 +102,22 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
         );
         if (maxAbs > 0) setRadius(maxAbs);
         dirtyTracker.clear();
+      } catch {
+        /* handled via toast */
+      }
+    })();
+    globeApi
+      .get(worldId, sphereIndex)
+      .then((n) => {
+        if (!cancelled) setGlobeNode(n);
+      })
+      .catch(() => {
+        /* handled via toast */
+      });
+    starterApi
+      .list(worldId)
+      .then((list) => {
+        if (!cancelled) setStarters(list);
       })
       .catch(() => {
         /* handled via toast */
@@ -250,6 +288,71 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
     return { q: hover.q, r: hover.r, terrain: existing?.terrain ?? null };
   }, [hover, nodes]);
 
+  // Fast lookup of tiles in the currently loaded region by db id.
+  const tilesById = useMemo(() => {
+    const m = new Map<number, Node>();
+    for (const n of nodes.values()) {
+      if (n.id != null) m.set(n.id, n);
+    }
+    return m;
+  }, [nodes]);
+
+  const handleTileContextMenu = useCallback(
+    (q: number, r: number, sx: number, sy: number) => {
+      const tile = nodes.get(keyOf(q, r)) ?? null;
+      setMenu({ q, r, tile, screenX: sx, screenY: sy });
+    },
+    [nodes],
+  );
+
+  const closeMenu = useCallback(() => setMenu(null), []);
+
+  const refreshStarters = useCallback(async () => {
+    try {
+      const list = await starterApi.list(worldId);
+      setStarters(list);
+    } catch {
+      /* error toast via effect */
+    }
+  }, [starterApi, worldId]);
+
+  const assignStarter = useCallback(
+    async (raceId: RaceId) => {
+      if (!menu) return;
+      const tile = menu.tile;
+      if (!tile || tile.id == null) {
+        showToast('error', 'Save terrain changes first — this tile has no id yet');
+        closeMenu();
+        return;
+      }
+      try {
+        await starterApi.set(worldId, raceId, tile.id);
+        await refreshStarters();
+        showToast('info', `${raceId} → tile id ${tile.id}`);
+      } catch (err) {
+        showToast('error', err instanceof Error ? err.message : 'Assign failed');
+      } finally {
+        closeMenu();
+      }
+    },
+    [menu, starterApi, worldId, refreshStarters, showToast, closeMenu],
+  );
+
+  const clearStarter = useCallback(
+    async (raceId: RaceId) => {
+      try {
+        await starterApi.remove(worldId, raceId);
+        await refreshStarters();
+        showToast('info', `${raceId} cleared`);
+      } catch (err) {
+        showToast('error', err instanceof Error ? err.message : 'Clear failed');
+      } finally {
+        closeMenu();
+      }
+    },
+    [starterApi, worldId, refreshStarters, showToast, closeMenu],
+  );
+
   const breadcrumb = globeNode
     ? globeNode.biome
       ? `Node #${sphereIndex} · ${biomeLabel(globeNode.biome)}`
@@ -269,21 +372,64 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
         onSave={handleSave}
         onBack={handleBack}
         breadcrumb={breadcrumb}
+        view={view}
+        onViewChange={setView}
+        rightExtras={
+          <button
+            type="button"
+            className={`${toolbarStyles.btn} ${feedOpen ? toolbarStyles.active : ''}`}
+            onClick={() => setFeedOpen(!feedOpen)}
+            title="Toggle live feed"
+            aria-pressed={feedOpen}
+          >
+            Feed
+          </button>
+        }
       />
       <div className={styles.body}>
         <TerrainSidebar selected={selectedTerrain} onSelect={setSelectedTerrain} />
-        <MapCanvas
-          hexApi={hexApi}
-          nodes={nodes}
-          dirty={dirtyTracker.dirty}
-          selectedTerrain={selectedTerrain}
-          onPaint={handlePaint}
-          onPaintMany={handlePaintMany}
-          onHoverChange={setHover}
-          onZoomChange={setZoom}
-          loading={api.loading}
-        />
+        {view === '3d' ? (
+          <MapCanvas3D
+            hexApi={hexApi}
+            nodes={nodes}
+            selectedTerrain={selectedTerrain}
+            starters={starters}
+            tilesById={tilesById}
+            onPaint={handlePaint}
+            onHoverChange={setHover}
+            onZoomChange={setZoom}
+            onTileContextMenu={handleTileContextMenu}
+            loading={api.loading}
+          />
+        ) : (
+          <MapCanvas
+            hexApi={hexApi}
+            nodes={nodes}
+            dirty={dirtyTracker.dirty}
+            selectedTerrain={selectedTerrain}
+            starters={starters}
+            tilesById={tilesById}
+            onPaint={handlePaint}
+            onPaintMany={handlePaintMany}
+            onHoverChange={setHover}
+            onZoomChange={setZoom}
+            onTileContextMenu={handleTileContextMenu}
+            loading={api.loading}
+          />
+        )}
       </div>
+      {menu && (
+        <StarterContextMenu
+          tile={menu.tile}
+          starters={starters}
+          tilesById={tilesById}
+          screenX={menu.screenX}
+          screenY={menu.screenY}
+          onAssign={assignStarter}
+          onClear={clearStarter}
+          onClose={closeMenu}
+        />
+      )}
       <StatusBar
         hover={hoverWithTerrain}
         zoom={zoom}
@@ -298,6 +444,12 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
           {toast.text}
         </div>
       )}
+      <FeedDock
+        open={feedOpen}
+        onOpenChange={setFeedOpen}
+        nodeScope={globeNode?.id ?? undefined}
+        topOffset={54}
+      />
     </div>
   );
 }

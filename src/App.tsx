@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 
-// --- editor screens (unchanged design — wrapped into routes below) ---
 import { WorldsScreen } from './screens/WorldsScreen';
 import { GlobeScreen } from './screens/GlobeScreen';
 import { EditorScreen } from './screens/EditorScreen';
@@ -13,19 +12,10 @@ import { AdminScreen as EditorAdminScreen } from './screens/AdminScreen';
 import { clearToken, getToken } from './utils/api';
 import { API_BASE_URL_CHANGED_EVENT, hasApiBaseUrl } from './utils/apiConfig';
 
-// --- admin (operator) views ---
 import { AuthProvider } from './admin/lib/auth/AuthContext';
 import { GlobalFeedProvider } from './admin/lib/feed/GlobalFeedContext';
 import { RecentProvider } from './admin/lib/recent';
 import { createQueryClient } from './admin/lib/query/client';
-import { AdminShell } from './admin/components/layout/Shell';
-import { LiveFeedView } from './admin/views/liveFeed/LiveFeedView';
-import { AgentPanelView } from './admin/views/agentPanel/AgentPanelView';
-import { NodeDetailView } from './admin/views/nodeDetail/NodeDetailView';
-import { WorldMapView } from './admin/views/worldMap/WorldMapView';
-import { AuditLogView } from './admin/views/auditLog/AuditLogView';
-import { NpcZonesView } from './admin/views/npcZones/NpcZonesView';
-import { FeedReplayView } from './admin/views/feedReplay/FeedReplayView';
 
 /* --------------------------------------------------------------------------
  * Top-level gate: FirstLaunch (no base URL) or LoginScreen (no bearer)
@@ -77,7 +67,6 @@ function WorldsRoute() {
       onEnterWorld={(worldId) => nav(`/worlds/${worldId}/globe`)}
       onLogout={() => clearToken()}
       onAdmin={() => nav('/worlds/admin')}
-      onOperations={() => nav('/admin/feed')}
     />
   );
 }
@@ -116,30 +105,6 @@ function EditorAdminRoute() {
   return <EditorAdminScreen onBack={() => nav('/worlds')} />;
 }
 
-/* --------------------------------------------------------------------------
- * Auth provider sits inside the router (uses navigate on logout).
- * -------------------------------------------------------------------------- */
-
-function ProtectedRedirectOnLogout({ children }: { children: ReactNode }) {
-  const nav = useNavigate();
-  const loc = useLocation();
-  useEffect(() => {
-    const onLogout = () => {
-      // If a logout happens mid-flow we don't unmount the tree (RootGate does
-      // that based on `authed`), but we make sure we land back on /worlds the
-      // next time the user signs in.
-      if (loc.pathname.startsWith('/admin')) nav('/worlds', { replace: true });
-    };
-    window.addEventListener('auth:logout', onLogout);
-    return () => window.removeEventListener('auth:logout', onLogout);
-  }, [nav, loc.pathname]);
-  return <>{children}</>;
-}
-
-/* --------------------------------------------------------------------------
- * The router.
- * -------------------------------------------------------------------------- */
-
 export default function App() {
   const queryClient = useMemo(() => createQueryClient(), []);
   return (
@@ -149,31 +114,14 @@ export default function App() {
           <AuthProvider>
             <RecentProvider>
               <GlobalFeedProvider>
-                <ProtectedRedirectOnLogout>
-                  <Routes>
-                    <Route index element={<Navigate to="/worlds" replace />} />
-                    <Route path="/worlds" element={<WorldsRoute />} />
-                    <Route path="/worlds/admin" element={<EditorAdminRoute />} />
-                    <Route path="/worlds/:worldId/globe" element={<GlobeRoute />} />
-                    <Route path="/worlds/:worldId/edit/:sphereIndex" element={<EditorRoute />} />
-
-                    <Route path="/admin" element={<AdminShell />}>
-                      <Route index element={<Navigate to="/admin/feed" replace />} />
-                      <Route path="feed" element={<LiveFeedView />} />
-                      <Route path="agents" element={<AgentPanelView />} />
-                      <Route path="agents/:agentId" element={<AgentPanelView />} />
-                      <Route path="nodes" element={<NodeDetailView />} />
-                      <Route path="nodes/:nodeId" element={<NodeDetailView />} />
-                      <Route path="map" element={<WorldMapView />} />
-                      <Route path="zones" element={<NpcZonesView />} />
-                      <Route path="replay" element={<FeedReplayView />} />
-                      <Route path="audit" element={<AuditLogView />} />
-                    </Route>
-
-                    <Route path="*" element={<Navigate to="/worlds" replace />} />
-                  </Routes>
-                  <Outlet />
-                </ProtectedRedirectOnLogout>
+                <Routes>
+                  <Route index element={<Navigate to="/worlds" replace />} />
+                  <Route path="/worlds" element={<WorldsRoute />} />
+                  <Route path="/worlds/admin" element={<EditorAdminRoute />} />
+                  <Route path="/worlds/:worldId/globe" element={<GlobeRoute />} />
+                  <Route path="/worlds/:worldId/edit/:sphereIndex" element={<EditorRoute />} />
+                  <Route path="*" element={<Navigate to="/worlds" replace />} />
+                </Routes>
               </GlobalFeedProvider>
             </RecentProvider>
           </AuthProvider>
