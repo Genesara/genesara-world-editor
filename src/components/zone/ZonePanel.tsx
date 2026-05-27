@@ -2,12 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useZonesApi, type ZoneCreateBody } from '@/hooks/useZonesApi';
 import type { NpcZone } from '@/lib/runtime/api/worlds';
 import { ApiError } from '@/lib/runtime/api/error';
+import { NPC_CATALOG, npcLabel, npcsForBiome } from '@/constants/npcCatalog';
 import styles from './ZonePanel.module.css';
 
 interface Props {
   worldId: number;
   /** Persisted GlobeNode.id of the node currently open in the editor. */
   nodeId: number | undefined;
+  /** Optional biome of the current node — used to surface compatible NPC
+   *  types first in the dropdown. */
+  biome?: string | null;
   onClose: () => void;
 }
 
@@ -23,8 +27,10 @@ interface FormState {
   active: boolean;
 }
 
+const DEFAULT_FORM_TYPE = NPC_CATALOG[0]?.id ?? '';
+
 const EMPTY_FORM: FormState = {
-  weights: [{ type: '', weight: '1' }],
+  weights: [{ type: DEFAULT_FORM_TYPE, weight: '1' }],
   maxConcurrent: '5',
   respawnTicks: '',
   active: true,
@@ -35,7 +41,7 @@ function zoneToForm(z: NpcZone): FormState {
     type,
     weight: String(w),
   }));
-  if (weights.length === 0) weights.push({ type: '', weight: '1' });
+  if (weights.length === 0) weights.push({ type: DEFAULT_FORM_TYPE, weight: '1' });
   return {
     weights,
     maxConcurrent: String(z.maxConcurrent),
@@ -68,9 +74,19 @@ function formToBody(f: FormState): ZoneCreateBody | { error: string } {
   return { weights, maxConcurrent: Math.floor(maxConcurrent), respawnTicks, active: f.active };
 }
 
-export function ZonePanel({ worldId, nodeId, onClose }: Props) {
+export function ZonePanel({ worldId, nodeId, biome, onClose }: Props) {
   const api = useZonesApi(worldId);
   const zones = useMemo(() => api.forNode(nodeId), [api, nodeId]);
+
+  // Sort: biome-compatible NPCs first, then the rest. Keeps the dropdown
+  // useful without hiding choices outright.
+  const npcOptions = useMemo(() => {
+    if (!biome) return NPC_CATALOG;
+    const compatibleIds = new Set(npcsForBiome(biome).map((e) => e.id));
+    const compat = NPC_CATALOG.filter((e) => compatibleIds.has(e.id));
+    const rest = NPC_CATALOG.filter((e) => !compatibleIds.has(e.id));
+    return [...compat, ...rest];
+  }, [biome]);
 
   const [editingId, setEditingId] = useState<string | null>(null); // 'new' for create draft
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -183,6 +199,8 @@ export function ZonePanel({ worldId, nodeId, onClose }: Props) {
                     key={zone.zoneId}
                     form={form}
                     setForm={setForm}
+                    npcOptions={npcOptions}
+                    biome={biome}
                     busy={busy}
                     onCancel={cancelEdit}
                     onSubmit={submit}
@@ -203,6 +221,8 @@ export function ZonePanel({ worldId, nodeId, onClose }: Props) {
                 <ZoneForm
                   form={form}
                   setForm={setForm}
+                  npcOptions={npcOptions}
+                  biome={biome}
                   busy={busy}
                   onCancel={cancelEdit}
                   onSubmit={submit}
@@ -240,8 +260,8 @@ function ZoneCard({
       </div>
       <div className={styles.weightChips}>
         {Object.entries(zone.weights).map(([type, w]) => (
-          <span key={type} className={styles.weightChip}>
-            {type}×{w}
+          <span key={type} className={styles.weightChip} title={type}>
+            {npcLabel(type)} × {w}
           </span>
         ))}
       </div>
@@ -270,6 +290,8 @@ function ZoneCard({
 interface ZoneFormProps {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  npcOptions: typeof NPC_CATALOG;
+  biome: string | null | undefined;
   busy: boolean;
   onCancel: () => void;
   onSubmit: () => void;
@@ -277,7 +299,17 @@ interface ZoneFormProps {
   editing?: boolean;
 }
 
-function ZoneForm({ form, setForm, busy, onCancel, onSubmit, submitLabel, editing }: ZoneFormProps) {
+function ZoneForm({
+  form,
+  setForm,
+  npcOptions,
+  biome,
+  busy,
+  onCancel,
+  onSubmit,
+  submitLabel,
+  editing,
+}: ZoneFormProps) {
   const updateWeight = (i: number, patch: Partial<WeightRow>) => {
     setForm((f) => {
       const next = f.weights.slice();
@@ -289,8 +321,15 @@ function ZoneForm({ form, setForm, busy, onCancel, onSubmit, submitLabel, editin
     setForm((f) => ({ ...f, weights: f.weights.filter((_, idx) => idx !== i) }));
   };
   const addWeight = () => {
-    setForm((f) => ({ ...f, weights: [...f.weights, { type: '', weight: '1' }] }));
+    setForm((f) => ({ ...f, weights: [...f.weights, { type: DEFAULT_FORM_TYPE, weight: '1' }] }));
   };
+
+  const compatibleIds = useMemo(() => {
+    if (!biome) return null;
+    return new Set(npcsForBiome(biome).map((e) => e.id));
+  }, [biome]);
+
+  const isCompatible = (id: string) => compatibleIds == null || compatibleIds.has(id);
 
   return (
     <div className={`${styles.zoneCard} ${styles.zoneCardEditing}`}>
@@ -298,14 +337,26 @@ function ZoneForm({ form, setForm, busy, onCancel, onSubmit, submitLabel, editin
       <div className={styles.weightsList}>
         {form.weights.map((row, i) => (
           <div key={i} className={styles.weightRow}>
-            <input
-              type="text"
+            <select
               className={styles.input}
-              placeholder="NPC type"
-              value={row.type}
+              value={npcOptions.some((o) => o.id === row.type) ? row.type : ''}
               onChange={(e) => updateWeight(i, { type: e.target.value })}
               aria-label={`NPC type ${i + 1}`}
-            />
+            >
+              {/* Render a placeholder option only when the row's current type
+                  isn't in the catalog (e.g. legacy zone data). */}
+              {!npcOptions.some((o) => o.id === row.type) && (
+                <option value="" disabled>
+                  {row.type || 'Pick an NPC…'}
+                </option>
+              )}
+              {npcOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.displayName}
+                  {!isCompatible(o.id) ? ' · off-biome' : ''}
+                </option>
+              ))}
+            </select>
             <input
               type="number"
               min={1}

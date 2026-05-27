@@ -488,6 +488,7 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
         <ZonePanel
           worldId={worldId}
           nodeId={globeNode?.id ?? undefined}
+          biome={globeNode?.biome ?? null}
           onClose={() => setZonesOpen(false)}
         />
       )}
