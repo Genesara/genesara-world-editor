@@ -21,11 +21,10 @@ import { usePersistedToggle } from '../components/feed/usePersistedToggle';
 import { AgentLayer } from '../components/globe/AgentLayer';
 import { LayersMenu, type LayerOption } from '../components/globe/LayersMenu';
 import { ZoneLayer } from '../components/globe/ZoneLayer';
-import { ZoneToolBar, type ZoneMode } from '../components/globe/ZoneToolBar';
 import { AgentInspector } from '../components/agent/AgentInspector';
 import { AuditDrawer } from '../components/history/AuditDrawer';
 import { useAgentPositions } from '../hooks/useAgentPositions';
-import { useZonesApi, type ZoneDraft } from '../hooks/useZonesApi';
+import { useZonesApi } from '../hooks/useZonesApi';
 import styles from './GlobeScreen.module.css';
 
 interface Props {
@@ -63,9 +62,6 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
   const [layersMenuOpen, setLayersMenuOpen] = useState(false);
   const [inspectedAgent, setInspectedAgent] = useState<string | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
-  const [zoneMode, setZoneMode] = useState<ZoneMode>('off');
-  const [zoneDraft, setZoneDraft] = useState<ZoneDraft>({ toCreate: new Set(), toDelete: new Set() });
-  const [zoneSaving, setZoneSaving] = useState(false);
   const [highlightClimate, setHighlightClimate] = useState<ClimateType | null>(null);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -123,24 +119,12 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
   const zonesApi = useZonesApi(worldId);
   const zoneSphereIndices = useMemo(() => {
     const s = new Set<number>();
-    for (const [nodeId] of zonesApi.byNodeId) {
+    for (const nodeId of zonesApi.nodeIdsWithZone) {
       const face = idToSphereIndex.get(nodeId);
       if (face != null) s.add(face);
     }
     return s;
-  }, [zonesApi.byNodeId, idToSphereIndex]);
-  const sphereIndexToZoneId = useCallback(
-    (s: number): string | null => {
-      const node = nodes.get(s);
-      if (!node?.id) return null;
-      return zonesApi.byNodeId.get(node.id)?.zoneId ?? null;
-    },
-    [nodes, zonesApi.byNodeId],
-  );
-  const sphereIndexToNodeId = useCallback(
-    (s: number): number | null => nodes.get(s)?.id ?? null,
-    [nodes],
-  );
+  }, [zonesApi.nodeIdsWithZone, idToSphereIndex]);
 
   const activeIdx = hovered ?? selected;
   const activeNode = useMemo(
@@ -150,37 +134,9 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
 
   const handleSelect = useCallback(
     (sphereIndex: number) => {
-      // Zone-tool mode: clicks toggle the face in/out of the draft instead of
-      // opening the editor or the create-node dialog. Empty faces (no
-      // persisted node.id) are skipped since zones require a backing node.
-      const clicked = nodes.get(sphereIndex);
-      if (zoneMode === 'create') {
-        if (!clicked?.id) {
-          setError('Empty face — create the node first before zoning it.');
-          return;
-        }
-        setZoneDraft((prev) => {
-          const next = { toCreate: new Set(prev.toCreate), toDelete: new Set(prev.toDelete) };
-          if (next.toCreate.has(sphereIndex)) next.toCreate.delete(sphereIndex);
-          else if (!zoneSphereIndices.has(sphereIndex)) next.toCreate.add(sphereIndex);
-          return next;
-        });
-        return;
-      }
-      if (zoneMode === 'delete') {
-        setZoneDraft((prev) => {
-          const next = { toCreate: new Set(prev.toCreate), toDelete: new Set(prev.toDelete) };
-          if (next.toDelete.has(sphereIndex)) next.toDelete.delete(sphereIndex);
-          else if (zoneSphereIndices.has(sphereIndex)) next.toDelete.add(sphereIndex);
-          return next;
-        });
-        return;
-      }
-
       const node = nodes.get(sphereIndex);
       if (!node) return;
       if (isCreatedNode(node)) {
-        // Persist selection so the panel keeps showing it after pointer leaves.
         setSelected(sphereIndex);
         onEnterNode(sphereIndex);
       } else {
@@ -192,7 +148,7 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         });
       }
     },
-    [nodes, onEnterNode, zoneMode, zoneSphereIndices],
+    [nodes, onEnterNode],
   );
 
   const handleContextMenu = useCallback(
@@ -331,14 +287,6 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         </button>
         <button
           type="button"
-          className={`${styles.toggle} ${zoneMode !== 'off' ? styles.toggleActive : ''}`}
-          onClick={() => setZoneMode((m) => (m === 'off' ? 'create' : 'off'))}
-          title="NPC zones tool"
-        >
-          ◬ Zones
-        </button>
-        <button
-          type="button"
           className={`${styles.toggle} ${layersMenuOpen ? styles.toggleActive : ''}`}
           onClick={() => setLayersMenuOpen((v) => !v)}
           title="Layers"
@@ -396,12 +344,12 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
                 onAgentClick={setInspectedAgent}
               />
             )}
-            {(zoneLayerOn || zoneMode !== 'off') && (
+            {zoneLayerOn && (
               <ZoneLayer
                 nodes={nodes}
                 existing={zoneSphereIndices}
-                draftCreate={zoneDraft.toCreate}
-                draftDelete={zoneDraft.toDelete}
+                draftCreate={EMPTY_SET}
+                draftDelete={EMPTY_SET}
               />
             )}
             <OrbitControls
@@ -523,37 +471,6 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         />
       )}
 
-      {zoneMode !== 'off' && (
-        <ZoneToolBar
-          mode={zoneMode}
-          onModeChange={setZoneMode}
-          createCount={zoneDraft.toCreate.size}
-          deleteCount={zoneDraft.toDelete.size}
-          existingCount={zoneSphereIndices.size}
-          saving={zoneSaving}
-          onCancel={() => {
-            setZoneDraft({ toCreate: new Set(), toDelete: new Set() });
-            setZoneMode('off');
-          }}
-          onSave={async () => {
-            setZoneSaving(true);
-            try {
-              await zonesApi.saveBatch(
-                zoneDraft,
-                sphereIndexToNodeId,
-                zonesApi.byNodeId,
-                sphereIndexToZoneId,
-              );
-              setZoneDraft({ toCreate: new Set(), toDelete: new Set() });
-            } catch (e) {
-              setError(e instanceof Error ? e.message : 'Failed to save zones');
-            } finally {
-              setZoneSaving(false);
-            }
-          }}
-        />
-      )}
-
       <FeedDock
         open={feedOpen}
         onOpenChange={setFeedOpen}
@@ -572,6 +489,8 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
     </div>
   );
 }
+
+const EMPTY_SET: Set<number> = new Set();
 
 function layerOptions(
   agentLayerOn: boolean,

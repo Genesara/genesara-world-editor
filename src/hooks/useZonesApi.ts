@@ -2,19 +2,36 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { worldsApi, type NpcZone } from '@/lib/runtime/api/worlds';
 import { ApiError } from '@/lib/runtime/api/error';
 
-const DEFAULT_WEIGHTS: Record<string, number> = { WOLF: 1.0 };
-
-export interface ZoneDraft {
-  /** sphere indices the user clicked while in CREATE mode */
-  toCreate: Set<number>;
-  /** sphere indices of existing zones the user clicked while in DELETE mode */
-  toDelete: Set<number>;
+export interface ZoneCreateBody {
+  weights: Record<string, number>;
+  maxConcurrent: number;
+  respawnTicks?: number;
+  active: boolean;
 }
 
+export interface ZonePatchBody {
+  weights?: Record<string, number>;
+  maxConcurrent?: number;
+  respawnTicks?: number;
+  active?: boolean;
+}
+
+/**
+ * World-scoped zone list with helpers focused on a single node — the natural
+ * unit for the in-editor zone panel. Zones are server-paginated via list
+ * (small enough that we just refetch after each mutation).
+ */
 export function useZonesApi(worldId: number) {
   const [zones, setZones] = useState<NpcZone[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const messageOf = (e: unknown): string =>
+    e instanceof ApiError
+      ? e.detail ?? e.title
+      : e instanceof Error
+        ? e.message
+        : 'Zone request failed';
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -24,9 +41,7 @@ export function useZonesApi(worldId: number) {
         setZones(list);
         setError(null);
       })
-      .catch((e) => {
-        setError(e instanceof ApiError ? e.detail ?? e.title : e instanceof Error ? e.message : 'Failed to load zones');
-      })
+      .catch((e) => setError(messageOf(e)))
       .finally(() => setLoading(false));
   }, [worldId]);
 
@@ -34,48 +49,56 @@ export function useZonesApi(worldId: number) {
     void refresh();
   }, [refresh]);
 
-  /**
-   * Submit a draft: creates a node-scoped zone per `toCreate` sphereIndex
-   * (after looking up the persisted GlobeNode.id), and deletes the existing
-   * zone for each `toDelete` sphereIndex.
-   */
-  const saveBatch = useCallback(
-    async (
-      draft: ZoneDraft,
-      sphereIndexToNodeId: (s: number) => number | null,
-      byNodeId: Map<number, NpcZone>,
-      sphereIndexToZoneId: (s: number) => string | null,
-    ) => {
-      const creates = Array.from(draft.toCreate).map(async (sphereIndex) => {
-        const nodeId = sphereIndexToNodeId(sphereIndex);
-        if (nodeId == null) return null;
-        if (byNodeId.has(nodeId)) return null; // skip if a zone already exists
-        return worldsApi.createNpcZone(worldId, {
-          scope: 'NODE',
-          nodeId,
-          weights: DEFAULT_WEIGHTS,
-          maxConcurrent: 5,
-          active: true,
-        });
+  const create = useCallback(
+    async (nodeId: number, body: ZoneCreateBody): Promise<NpcZone> => {
+      const created = await worldsApi.createNpcZone(worldId, {
+        scope: 'NODE',
+        nodeId,
+        weights: body.weights,
+        maxConcurrent: body.maxConcurrent,
+        respawnTicks: body.respawnTicks,
+        active: body.active,
       });
-      const deletes = Array.from(draft.toDelete)
-        .map((sphereIndex) => sphereIndexToZoneId(sphereIndex))
-        .filter((id): id is string => !!id)
-        .map((zoneId) => worldsApi.deleteNpcZone(worldId, zoneId));
-      await Promise.all([...creates, ...deletes]);
+      await refresh();
+      return created;
+    },
+    [worldId, refresh],
+  );
+
+  const patch = useCallback(
+    async (zoneId: string, body: ZonePatchBody): Promise<NpcZone> => {
+      const updated = await worldsApi.patchNpcZone(worldId, zoneId, body);
+      await refresh();
+      return updated;
+    },
+    [worldId, refresh],
+  );
+
+  const remove = useCallback(
+    async (zoneId: string): Promise<void> => {
+      await worldsApi.deleteNpcZone(worldId, zoneId);
       await refresh();
     },
     [worldId, refresh],
   );
 
-  /** Index zones by their nodeId for fast lookup on the globe. */
-  const byNodeId = useMemo(() => {
-    const m = new Map<number, NpcZone>();
+  /** All zones currently attached to a specific node (a node can host many). */
+  const forNode = useCallback(
+    (nodeId: number | undefined): NpcZone[] => {
+      if (nodeId == null) return [];
+      return zones.filter((z) => z.scope === 'NODE' && z.nodeId === nodeId);
+    },
+    [zones],
+  );
+
+  /** Fast lookup of "does this nodeId have any zone?" — used by the globe overlay. */
+  const nodeIdsWithZone = useMemo(() => {
+    const s = new Set<number>();
     for (const z of zones) {
-      if (z.scope === 'NODE' && z.nodeId != null) m.set(z.nodeId, z);
+      if (z.scope === 'NODE' && z.nodeId != null) s.add(z.nodeId);
     }
-    return m;
+    return s;
   }, [zones]);
 
-  return { zones, byNodeId, loading, error, refresh, saveBatch };
+  return { zones, loading, error, refresh, create, patch, remove, forNode, nodeIdsWithZone };
 }

@@ -552,6 +552,22 @@ export const handlers = [
     mockZones.push(zone);
     return HttpResponse.json(stripWorldId(zone), { status: 201 });
   }),
+  http.patch(`${BASE_URL}/admin/worlds/:worldId/npc-zones/:zoneId`, async ({ params, request }) => {
+    const worldId = Number(params.worldId);
+    const idx = mockZones.findIndex((z) => z.worldId === worldId && z.zoneId === params.zoneId);
+    if (idx === -1) return new HttpResponse(null, { status: 404 });
+    const patch = (await request.json().catch(() => ({}))) as Partial<MockZone>;
+    const existing = mockZones[idx];
+    const updated: MockZone = {
+      ...existing,
+      weights: patch.weights ?? existing.weights,
+      maxConcurrent: patch.maxConcurrent ?? existing.maxConcurrent,
+      respawnTicks: 'respawnTicks' in patch ? patch.respawnTicks : existing.respawnTicks,
+      active: patch.active ?? existing.active,
+    };
+    mockZones[idx] = updated;
+    return HttpResponse.json(stripWorldId(updated));
+  }),
   http.delete(`${BASE_URL}/admin/worlds/:worldId/npc-zones/:zoneId`, ({ params }) => {
     const worldId = Number(params.worldId);
     const idx = mockZones.findIndex((z) => z.worldId === worldId && z.zoneId === params.zoneId);

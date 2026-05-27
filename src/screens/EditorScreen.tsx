@@ -20,6 +20,7 @@ import { FeedDock } from '../components/feed/FeedDock';
 import { usePersistedToggle } from '../components/feed/usePersistedToggle';
 import { AgentInspector } from '../components/agent/AgentInspector';
 import { AuditDrawer } from '../components/history/AuditDrawer';
+import { ZonePanel } from '../components/zone/ZonePanel';
 import toolbarStyles from '../components/Toolbar.module.css';
 import styles from './EditorScreen.module.css';
 
@@ -61,6 +62,7 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
   const [feedOpen, setFeedOpen] = usePersistedToggle('feedDock.open', false);
   const [inspectedAgent, setInspectedAgent] = useState<string | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [zonesOpen, setZonesOpen] = useState(false);
 
   const dirtyTracker = useDirtyTracker();
   const api = useMapApi({ worldId, sphereIndex, initialRadius: radius });
@@ -382,6 +384,16 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
           <>
             <button
               type="button"
+              className={`${toolbarStyles.btn} ${zonesOpen ? toolbarStyles.active : ''}`}
+              onClick={() => setZonesOpen(true)}
+              title="NPC spawn zones for this node"
+              aria-pressed={zonesOpen}
+              disabled={globeNode?.id == null}
+            >
+              Zones
+            </button>
+            <button
+              type="button"
               className={`${toolbarStyles.btn} ${feedOpen ? toolbarStyles.active : ''}`}
               onClick={() => setFeedOpen(!feedOpen)}
               title="Toggle live feed"
@@ -472,6 +484,13 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
         />
       )}
       {auditOpen && <AuditDrawer onClose={() => setAuditOpen(false)} />}
+      {zonesOpen && (
+        <ZonePanel
+          worldId={worldId}
+          nodeId={globeNode?.id ?? undefined}
+          onClose={() => setZonesOpen(false)}
+        />
+      )}
     </div>
   );
 }
