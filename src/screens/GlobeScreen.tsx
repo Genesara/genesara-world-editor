@@ -20,8 +20,11 @@ import { FeedDock } from '../components/feed/FeedDock';
 import { usePersistedToggle } from '../components/feed/usePersistedToggle';
 import { AgentLayer } from '../components/globe/AgentLayer';
 import { LayersMenu, type LayerOption } from '../components/globe/LayersMenu';
+import { ZoneLayer } from '../components/globe/ZoneLayer';
+import { ZoneToolBar, type ZoneMode } from '../components/globe/ZoneToolBar';
 import { AgentInspector } from '../components/agent/AgentInspector';
 import { useAgentPositions } from '../hooks/useAgentPositions';
+import { useZonesApi, type ZoneDraft } from '../hooks/useZonesApi';
 import styles from './GlobeScreen.module.css';
 
 interface Props {
@@ -55,8 +58,12 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
   const [legendOpen, setLegendOpen] = useState(false);
   const [feedOpen, setFeedOpen] = usePersistedToggle('feedDock.open', false);
   const [agentLayerOn, setAgentLayerOn] = usePersistedToggle('globe.layer.agents', true);
+  const [zoneLayerOn, setZoneLayerOn] = usePersistedToggle('globe.layer.zones', true);
   const [layersMenuOpen, setLayersMenuOpen] = useState(false);
   const [inspectedAgent, setInspectedAgent] = useState<string | null>(null);
+  const [zoneMode, setZoneMode] = useState<ZoneMode>('off');
+  const [zoneDraft, setZoneDraft] = useState<ZoneDraft>({ toCreate: new Set(), toDelete: new Set() });
+  const [zoneSaving, setZoneSaving] = useState(false);
   const [highlightClimate, setHighlightClimate] = useState<ClimateType | null>(null);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -111,6 +118,28 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
     return n;
   }, [agentPositions]);
 
+  const zonesApi = useZonesApi(worldId);
+  const zoneSphereIndices = useMemo(() => {
+    const s = new Set<number>();
+    for (const [nodeId] of zonesApi.byNodeId) {
+      const face = idToSphereIndex.get(nodeId);
+      if (face != null) s.add(face);
+    }
+    return s;
+  }, [zonesApi.byNodeId, idToSphereIndex]);
+  const sphereIndexToZoneId = useCallback(
+    (s: number): string | null => {
+      const node = nodes.get(s);
+      if (!node?.id) return null;
+      return zonesApi.byNodeId.get(node.id)?.zoneId ?? null;
+    },
+    [nodes, zonesApi.byNodeId],
+  );
+  const sphereIndexToNodeId = useCallback(
+    (s: number): number | null => nodes.get(s)?.id ?? null,
+    [nodes],
+  );
+
   const activeIdx = hovered ?? selected;
   const activeNode = useMemo(
     () => (activeIdx == null ? null : nodes.get(activeIdx) ?? null),
@@ -119,6 +148,33 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
 
   const handleSelect = useCallback(
     (sphereIndex: number) => {
+      // Zone-tool mode: clicks toggle the face in/out of the draft instead of
+      // opening the editor or the create-node dialog. Empty faces (no
+      // persisted node.id) are skipped since zones require a backing node.
+      const clicked = nodes.get(sphereIndex);
+      if (zoneMode === 'create') {
+        if (!clicked?.id) {
+          setError('Empty face — create the node first before zoning it.');
+          return;
+        }
+        setZoneDraft((prev) => {
+          const next = { toCreate: new Set(prev.toCreate), toDelete: new Set(prev.toDelete) };
+          if (next.toCreate.has(sphereIndex)) next.toCreate.delete(sphereIndex);
+          else if (!zoneSphereIndices.has(sphereIndex)) next.toCreate.add(sphereIndex);
+          return next;
+        });
+        return;
+      }
+      if (zoneMode === 'delete') {
+        setZoneDraft((prev) => {
+          const next = { toCreate: new Set(prev.toCreate), toDelete: new Set(prev.toDelete) };
+          if (next.toDelete.has(sphereIndex)) next.toDelete.delete(sphereIndex);
+          else if (zoneSphereIndices.has(sphereIndex)) next.toDelete.add(sphereIndex);
+          return next;
+        });
+        return;
+      }
+
       const node = nodes.get(sphereIndex);
       if (!node) return;
       if (isCreatedNode(node)) {
@@ -134,7 +190,7 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         });
       }
     },
-    [nodes, onEnterNode],
+    [nodes, onEnterNode, zoneMode, zoneSphereIndices],
   );
 
   const handleContextMenu = useCallback(
@@ -273,6 +329,14 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         </button>
         <button
           type="button"
+          className={`${styles.toggle} ${zoneMode !== 'off' ? styles.toggleActive : ''}`}
+          onClick={() => setZoneMode((m) => (m === 'off' ? 'create' : 'off'))}
+          title="NPC zones tool"
+        >
+          ◬ Zones
+        </button>
+        <button
+          type="button"
           className={`${styles.toggle} ${layersMenuOpen ? styles.toggleActive : ''}`}
           onClick={() => setLayersMenuOpen((v) => !v)}
           title="Layers"
@@ -320,6 +384,14 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
                 nodes={nodes}
                 positions={agentPositions}
                 onAgentClick={setInspectedAgent}
+              />
+            )}
+            {(zoneLayerOn || zoneMode !== 'off') && (
+              <ZoneLayer
+                nodes={nodes}
+                existing={zoneSphereIndices}
+                draftCreate={zoneDraft.toCreate}
+                draftDelete={zoneDraft.toDelete}
               />
             )}
             <OrbitControls
@@ -430,7 +502,45 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
       {layersMenuOpen && (
         <LayersMenu
           onClose={() => setLayersMenuOpen(false)}
-          options={layerOptions(agentLayerOn, setAgentLayerOn, agentTotal)}
+          options={layerOptions(
+            agentLayerOn,
+            setAgentLayerOn,
+            agentTotal,
+            zoneLayerOn,
+            setZoneLayerOn,
+            zoneSphereIndices.size,
+          )}
+        />
+      )}
+
+      {zoneMode !== 'off' && (
+        <ZoneToolBar
+          mode={zoneMode}
+          onModeChange={setZoneMode}
+          createCount={zoneDraft.toCreate.size}
+          deleteCount={zoneDraft.toDelete.size}
+          existingCount={zoneSphereIndices.size}
+          saving={zoneSaving}
+          onCancel={() => {
+            setZoneDraft({ toCreate: new Set(), toDelete: new Set() });
+            setZoneMode('off');
+          }}
+          onSave={async () => {
+            setZoneSaving(true);
+            try {
+              await zonesApi.saveBatch(
+                zoneDraft,
+                sphereIndexToNodeId,
+                zonesApi.byNodeId,
+                sphereIndexToZoneId,
+              );
+              setZoneDraft({ toCreate: new Set(), toDelete: new Set() });
+            } catch (e) {
+              setError(e instanceof Error ? e.message : 'Failed to save zones');
+            } finally {
+              setZoneSaving(false);
+            }
+          }}
         />
       )}
 
@@ -455,6 +565,9 @@ function layerOptions(
   agentLayerOn: boolean,
   setAgentLayerOn: (v: boolean) => void,
   agentCount: number,
+  zoneLayerOn: boolean,
+  setZoneLayerOn: (v: boolean) => void,
+  zoneCount: number,
 ): LayerOption[] {
   return [
     {
@@ -463,6 +576,13 @@ function layerOptions(
       active: agentLayerOn,
       count: agentCount,
       onToggle: () => setAgentLayerOn(!agentLayerOn),
+    },
+    {
+      id: 'zones',
+      label: 'NPC zones',
+      active: zoneLayerOn,
+      count: zoneCount,
+      onToggle: () => setZoneLayerOn(!zoneLayerOn),
     },
   ];
 }
