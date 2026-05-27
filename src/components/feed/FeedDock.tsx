@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useGlobalFeed } from '@/admin/lib/feed/GlobalFeedContext';
-import { fetchFeedRange } from '@/admin/lib/api/feed';
-import type { FeedEnvelope, Seq } from '@/admin/lib/types';
+import { useGlobalFeed } from '@/lib/runtime/feed/GlobalFeedContext';
+import { fetchFeedRange } from '@/lib/runtime/api/feed';
+import type { FeedEnvelope, Seq } from '@/lib/runtime/types';
 import styles from './FeedDock.module.css';
 
 type Mode = 'live' | 'replay';

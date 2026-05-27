@@ -12,10 +12,10 @@ import { AdminScreen as EditorAdminScreen } from './screens/AdminScreen';
 import { clearToken, getToken } from './utils/api';
 import { API_BASE_URL_CHANGED_EVENT, hasApiBaseUrl } from './utils/apiConfig';
 
-import { AuthProvider } from './admin/lib/auth/AuthContext';
-import { GlobalFeedProvider } from './admin/lib/feed/GlobalFeedContext';
-import { RecentProvider } from './admin/lib/recent';
-import { createQueryClient } from './admin/lib/query/client';
+import { AuthProvider } from './lib/runtime/auth/AuthContext';
+import { GlobalFeedProvider } from './lib/runtime/feed/GlobalFeedContext';
+import { RecentProvider } from './lib/runtime/recent';
+import { createQueryClient } from './lib/runtime/query/client';
 
 /* --------------------------------------------------------------------------
  * Top-level gate: FirstLaunch (no base URL) or LoginScreen (no bearer)

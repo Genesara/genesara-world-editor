@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useGlobalFeed } from '@/admin/lib/feed/GlobalFeedContext';
-import type { Uuid, NodeId } from '@/admin/lib/types';
+import { useGlobalFeed } from '@/lib/runtime/feed/GlobalFeedContext';
+import type { Uuid, NodeId } from '@/lib/runtime/types';
 
 /**
  * Derives a (sphereIndex → agentIds) map from the live feed. Each agent.*

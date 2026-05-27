@@ -8,30 +8,6 @@
 @import './styles/tokens.css';
 @import './styles/primitives.css';
 
-/* Tailwind layers — preflight is disabled in tailwind.config.ts so the
-   editor's existing reset is preserved. Tailwind utilities are available
-   everywhere; admin views use them, editor screens stick to CSS modules. */
-@tailwind components;
-@tailwind utilities;
-
-@layer components {
-  .surface-1 {
-    @apply bg-bg-subtle border border-border-subtle rounded-md;
-  }
-  .surface-2 {
-    @apply bg-bg-raised border border-border-default rounded-md;
-  }
-  .surface-overlay {
-    @apply bg-bg-overlay border border-border-default rounded-lg shadow-elevated;
-  }
-  .mono {
-    @apply font-mono text-xs tabular-nums;
-  }
-  .label-muted {
-    @apply text-xs uppercase tracking-wider text-fg-muted;
-  }
-}
-
 * {
   box-sizing: border-box;
 }

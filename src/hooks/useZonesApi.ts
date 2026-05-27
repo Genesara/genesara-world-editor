@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { worldsApi, type NpcZone } from '@/admin/lib/api/worlds';
-import { ApiError } from '@/admin/lib/api/error';
+import { worldsApi, type NpcZone } from '@/lib/runtime/api/worlds';
+import { ApiError } from '@/lib/runtime/api/error';
 
 const DEFAULT_WEIGHTS: Record<string, number> = { WOLF: 1.0 };
 

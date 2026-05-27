@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { listAudit } from '@/admin/lib/api/audit';
-import type { AuditEntry } from '@/admin/lib/types';
-import { ApiError } from '@/admin/lib/api/error';
+import { listAudit } from '@/lib/runtime/api/audit';
+import type { AuditEntry } from '@/lib/runtime/types';
+import { ApiError } from '@/lib/runtime/api/error';
 import styles from './AuditDrawer.module.css';
 
 interface Props {

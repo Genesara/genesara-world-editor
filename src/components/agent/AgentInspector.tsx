@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
-import { agentsApi, type AgentDetail } from '@/admin/lib/api/agents';
-import { ApiError } from '@/admin/lib/api/error';
+import { agentsApi, type AgentDetail } from '@/lib/runtime/api/agents';
+import { ApiError } from '@/lib/runtime/api/error';
 import styles from './AgentInspector.module.css';
 
 interface Props {
