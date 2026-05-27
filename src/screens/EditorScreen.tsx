@@ -19,6 +19,7 @@ import { biomeLabel } from '../constants/biomeGroups';
 import { FeedDock } from '../components/feed/FeedDock';
 import { usePersistedToggle } from '../components/feed/usePersistedToggle';
 import { AgentInspector } from '../components/agent/AgentInspector';
+import { AuditDrawer } from '../components/history/AuditDrawer';
 import toolbarStyles from '../components/Toolbar.module.css';
 import styles from './EditorScreen.module.css';
 
@@ -59,6 +60,7 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
   const [globeNode, setGlobeNode] = useState<GlobeNode | null>(null);
   const [feedOpen, setFeedOpen] = usePersistedToggle('feedDock.open', false);
   const [inspectedAgent, setInspectedAgent] = useState<string | null>(null);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const dirtyTracker = useDirtyTracker();
   const api = useMapApi({ worldId, sphereIndex, initialRadius: radius });
@@ -377,15 +379,25 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
         view={view}
         onViewChange={setView}
         rightExtras={
-          <button
-            type="button"
-            className={`${toolbarStyles.btn} ${feedOpen ? toolbarStyles.active : ''}`}
-            onClick={() => setFeedOpen(!feedOpen)}
-            title="Toggle live feed"
-            aria-pressed={feedOpen}
-          >
-            Feed
-          </button>
+          <>
+            <button
+              type="button"
+              className={`${toolbarStyles.btn} ${feedOpen ? toolbarStyles.active : ''}`}
+              onClick={() => setFeedOpen(!feedOpen)}
+              title="Toggle live feed"
+              aria-pressed={feedOpen}
+            >
+              Feed
+            </button>
+            <button
+              type="button"
+              className={toolbarStyles.btn}
+              onClick={() => setAuditOpen(true)}
+              title="Audit log"
+            >
+              History
+            </button>
+          </>
         }
       />
       <div className={styles.body}>
@@ -459,6 +471,7 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
           onClose={() => setInspectedAgent(null)}
         />
       )}
+      {auditOpen && <AuditDrawer onClose={() => setAuditOpen(false)} />}
     </div>
   );
 }

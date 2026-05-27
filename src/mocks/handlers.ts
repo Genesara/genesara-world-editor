@@ -519,6 +519,16 @@ export const handlers = [
     },
   ),
 
+  // ---- Audit log ----
+  http.get(`${BASE_URL}/admin/audit`, ({ request }) => {
+    const url = new URL(request.url);
+    const after = Number(url.searchParams.get('after') ?? 0);
+    const limit = Number(url.searchParams.get('limit') ?? 100);
+    const entries = mockAuditEntries.filter((e) => e.seq > after).slice(0, limit);
+    const nextCursor = entries.length > 0 ? entries[entries.length - 1].seq : after;
+    return HttpResponse.json({ entries, nextCursor });
+  }),
+
   // ---- NPC zones ----
   http.get(`${BASE_URL}/admin/worlds/:worldId/npc-zones`, ({ params }) => {
     const worldId = Number(params.worldId);
@@ -569,3 +579,37 @@ function stripWorldId(z: MockZone): Omit<MockZone, 'worldId'> {
   const { worldId: _w, ...rest } = z;
   return rest;
 }
+
+interface MockAuditEntry {
+  seq: number;
+  adminId: string;
+  action: string;
+  target: string;
+  targetId: string;
+  payload: unknown;
+  tick: number;
+  occurredAt: string;
+}
+
+// Seed a handful of audit entries so the drawer isn't empty in dev.
+const mockAuditEntries: MockAuditEntry[] = (() => {
+  const adminId = '00000000-0000-4000-8000-000000000001';
+  const now = Date.now();
+  const seed: Array<[number, string, string, string, unknown]> = [
+    [1, 'agent.spawn', 'agent', 'b29bee84-fa6f-4697-aaab-347993a919ad', { raceId: 'HUMAN_HIGHLAND' }],
+    [2, 'world.create', 'world', '1', { name: 'Demo', nodeCount: 92 }],
+    [3, 'zone.create', 'zone', 'zone-001', { scope: 'NODE', nodeId: 12 }],
+    [4, 'agent.teleport', 'agent', 'b29bee84-fa6f-4697-aaab-347993a919ad', { from: 12, to: 34 }],
+    [5, 'building.create', 'building', 'bld-001', { type: 'CHEST', nodeId: 34 }],
+  ];
+  return seed.map(([seq, action, target, targetId, payload]) => ({
+    seq,
+    adminId,
+    action,
+    target,
+    targetId,
+    payload,
+    tick: seq * 10,
+    occurredAt: new Date(now - (10 - seq) * 60000).toISOString(),
+  }));
+})();

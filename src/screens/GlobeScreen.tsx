@@ -23,6 +23,7 @@ import { LayersMenu, type LayerOption } from '../components/globe/LayersMenu';
 import { ZoneLayer } from '../components/globe/ZoneLayer';
 import { ZoneToolBar, type ZoneMode } from '../components/globe/ZoneToolBar';
 import { AgentInspector } from '../components/agent/AgentInspector';
+import { AuditDrawer } from '../components/history/AuditDrawer';
 import { useAgentPositions } from '../hooks/useAgentPositions';
 import { useZonesApi, type ZoneDraft } from '../hooks/useZonesApi';
 import styles from './GlobeScreen.module.css';
@@ -61,6 +62,7 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
   const [zoneLayerOn, setZoneLayerOn] = usePersistedToggle('globe.layer.zones', true);
   const [layersMenuOpen, setLayersMenuOpen] = useState(false);
   const [inspectedAgent, setInspectedAgent] = useState<string | null>(null);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [zoneMode, setZoneMode] = useState<ZoneMode>('off');
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft>({ toCreate: new Set(), toDelete: new Set() });
   const [zoneSaving, setZoneSaving] = useState(false);
@@ -351,6 +353,14 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         >
           ▤ Feed
         </button>
+        <button
+          type="button"
+          className={styles.toggle}
+          onClick={() => setAuditOpen(true)}
+          title="Audit log"
+        >
+          ⟳ History
+        </button>
       </header>
 
       <div
@@ -557,6 +567,8 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
           onClose={() => setInspectedAgent(null)}
         />
       )}
+
+      {auditOpen && <AuditDrawer onClose={() => setAuditOpen(false)} />}
     </div>
   );
 }
