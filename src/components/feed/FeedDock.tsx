@@ -16,6 +16,8 @@ interface Props {
   /** Distance (in px) from the top of the positioning parent. Lets the dock
    *  sit below a screen's header bar instead of covering it. */
   topOffset?: number;
+  /** Click handler for the agent chip on an event row. */
+  onAgentSelect?: (agentId: string) => void;
 }
 
 const TYPE_PREFIXES = ['agent', 'combat', 'social', 'environment', 'economy'] as const;
@@ -54,7 +56,14 @@ function statusDotClass(status: string): string {
   return '';
 }
 
-export function FeedDock({ open, onOpenChange, nodeScope, agentScope, topOffset = 0 }: Props) {
+export function FeedDock({
+  open,
+  onOpenChange,
+  nodeScope,
+  agentScope,
+  topOffset = 0,
+  onAgentSelect,
+}: Props) {
   const { events, status, setFilters } = useGlobalFeed();
   const [mode, setMode] = useState<Mode>('live');
   const [activePrefixes, setActivePrefixes] = useState<Set<string>>(new Set());
@@ -283,7 +292,21 @@ export function FeedDock({ open, onOpenChange, nodeScope, agentScope, topOffset 
                   <span className={styles.rowType}>{env.type}</span>
                 </div>
                 <div className={styles.rowSub}>
-                  {env.agent && <span>agent {env.agent.slice(0, 8)} </span>}
+                  {env.agent && (
+                    <span
+                      style={{
+                        cursor: onAgentSelect ? 'pointer' : 'inherit',
+                        color: onAgentSelect ? 'var(--accent)' : undefined,
+                      }}
+                      onClick={(ev) => {
+                        if (!onAgentSelect || !env.agent) return;
+                        ev.stopPropagation();
+                        onAgentSelect(env.agent);
+                      }}
+                    >
+                      agent {env.agent.slice(0, 8)}
+                    </span>
+                  )}{' '}
                   {env.node != null && <span>· node {env.node}</span>}
                 </div>
                 {isOpen && (

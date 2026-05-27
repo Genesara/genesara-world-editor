@@ -18,6 +18,7 @@ import { downloadJson, pickJsonFile } from '../utils/exportJson';
 import { biomeLabel } from '../constants/biomeGroups';
 import { FeedDock } from '../components/feed/FeedDock';
 import { usePersistedToggle } from '../components/feed/usePersistedToggle';
+import { AgentInspector } from '../components/agent/AgentInspector';
 import toolbarStyles from '../components/Toolbar.module.css';
 import styles from './EditorScreen.module.css';
 
@@ -57,6 +58,7 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
   const [toast, setToast] = useState<{ kind: 'error' | 'info'; text: string } | null>(null);
   const [globeNode, setGlobeNode] = useState<GlobeNode | null>(null);
   const [feedOpen, setFeedOpen] = usePersistedToggle('feedDock.open', false);
+  const [inspectedAgent, setInspectedAgent] = useState<string | null>(null);
 
   const dirtyTracker = useDirtyTracker();
   const api = useMapApi({ worldId, sphereIndex, initialRadius: radius });
@@ -449,7 +451,14 @@ export function EditorScreen({ worldId, sphereIndex, onBack }: Props) {
         onOpenChange={setFeedOpen}
         nodeScope={globeNode?.id ?? undefined}
         topOffset={54}
+        onAgentSelect={setInspectedAgent}
       />
+      {inspectedAgent && (
+        <AgentInspector
+          agentId={inspectedAgent}
+          onClose={() => setInspectedAgent(null)}
+        />
+      )}
     </div>
   );
 }

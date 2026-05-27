@@ -18,6 +18,10 @@ import { climateColorFor } from '../constants/climateColors';
 import { climateLabel } from '../constants/climateGroups';
 import { FeedDock } from '../components/feed/FeedDock';
 import { usePersistedToggle } from '../components/feed/usePersistedToggle';
+import { AgentLayer } from '../components/globe/AgentLayer';
+import { LayersMenu, type LayerOption } from '../components/globe/LayersMenu';
+import { AgentInspector } from '../components/agent/AgentInspector';
+import { useAgentPositions } from '../hooks/useAgentPositions';
 import styles from './GlobeScreen.module.css';
 
 interface Props {
@@ -50,6 +54,9 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
   const [autoRotate, setAutoRotate] = useState(true);
   const [legendOpen, setLegendOpen] = useState(false);
   const [feedOpen, setFeedOpen] = usePersistedToggle('feedDock.open', false);
+  const [agentLayerOn, setAgentLayerOn] = usePersistedToggle('globe.layer.agents', true);
+  const [layersMenuOpen, setLayersMenuOpen] = useState(false);
+  const [inspectedAgent, setInspectedAgent] = useState<string | null>(null);
   const [highlightClimate, setHighlightClimate] = useState<ClimateType | null>(null);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -82,6 +89,27 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
       return next;
     });
   }, []);
+
+  // Map persisted GlobeNode.id (what live-feed events carry) to sphere face.
+  const idToSphereIndex = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const n of nodes.values()) {
+      if (n.id != null) m.set(n.id, n.sphere_index);
+    }
+    return m;
+  }, [nodes]);
+
+  const sphereIndexLookup = useCallback(
+    (nodeId: number) => idToSphereIndex.get(nodeId) ?? null,
+    [idToSphereIndex],
+  );
+
+  const agentPositions = useAgentPositions(sphereIndexLookup);
+  const agentTotal = useMemo(() => {
+    let n = 0;
+    for (const a of agentPositions.values()) n += a.length;
+    return n;
+  }, [agentPositions]);
 
   const activeIdx = hovered ?? selected;
   const activeNode = useMemo(
@@ -245,6 +273,14 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         </button>
         <button
           type="button"
+          className={`${styles.toggle} ${layersMenuOpen ? styles.toggleActive : ''}`}
+          onClick={() => setLayersMenuOpen((v) => !v)}
+          title="Layers"
+        >
+          ☷ Layers
+        </button>
+        <button
+          type="button"
           className={`${styles.toggle} ${feedOpen ? styles.toggleActive : ''}`}
           onClick={() => setFeedOpen(!feedOpen)}
           title="Toggle live feed"
@@ -279,6 +315,13 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
               onSelect={handleSelect}
               onContextMenu={handleContextMenu}
             />
+            {agentLayerOn && (
+              <AgentLayer
+                nodes={nodes}
+                positions={agentPositions}
+                onAgentClick={setInspectedAgent}
+              />
+            )}
             <OrbitControls
               enableZoom
               enablePan={false}
@@ -384,7 +427,42 @@ export function GlobeScreen({ worldId, onBack, onEnterNode }: Props) {
         />
       )}
 
-      <FeedDock open={feedOpen} onOpenChange={setFeedOpen} topOffset={58} />
+      {layersMenuOpen && (
+        <LayersMenu
+          onClose={() => setLayersMenuOpen(false)}
+          options={layerOptions(agentLayerOn, setAgentLayerOn, agentTotal)}
+        />
+      )}
+
+      <FeedDock
+        open={feedOpen}
+        onOpenChange={setFeedOpen}
+        topOffset={58}
+        onAgentSelect={setInspectedAgent}
+      />
+
+      {inspectedAgent && (
+        <AgentInspector
+          agentId={inspectedAgent}
+          onClose={() => setInspectedAgent(null)}
+        />
+      )}
     </div>
   );
+}
+
+function layerOptions(
+  agentLayerOn: boolean,
+  setAgentLayerOn: (v: boolean) => void,
+  agentCount: number,
+): LayerOption[] {
+  return [
+    {
+      id: 'agents',
+      label: 'Agents',
+      active: agentLayerOn,
+      count: agentCount,
+      onToggle: () => setAgentLayerOn(!agentLayerOn),
+    },
+  ];
 }
