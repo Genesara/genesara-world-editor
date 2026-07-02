@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Genesara/genesara-world-editor/compare/v0.2.0...v0.3.0) (2026-07-02)
+
+
+### Features
+
+* **editor:** render 2D/3D maps with real CC0 assets (KayKit + Kenney) ([b75a7ff](https://github.com/Genesara/genesara-world-editor/commit/b75a7ffc677302079eb8282e000b053ccc0952fd))
+
 ## [0.2.0](https://github.com/Genesara/genesara-world-editor/compare/v0.1.0...v0.2.0) (2026-04-27)
 
 
