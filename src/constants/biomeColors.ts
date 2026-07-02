@@ -14,6 +14,7 @@ export const biomeColors: Record<Biome, string> = {
   RUINS: '#8a7d6a',
   DESERT: '#e8d49a',
   TUNDRA: '#c8e0ec',
+  OCEAN: '#2f5d80',
 };
 
 export const biomeColorFor = (b: Biome): string => biomeColors[b];

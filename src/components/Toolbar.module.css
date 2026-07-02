@@ -2,41 +2,36 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px 14px;
-  background: #10141b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  color: #e8ecf1;
+  padding: 12px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+  color: var(--text);
   flex-shrink: 0;
 }
 
 .brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-right: 12px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.logo {
-  display: block;
-  width: 22px;
-  height: 22px;
-  background: linear-gradient(135deg, #6aa7ff 0%, #4fb87a 100%);
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  align-items: baseline;
+  gap: 14px;
+  padding-right: 16px;
+  border-right: 1px solid var(--rule);
 }
 
 .title {
+  font-family: var(--display);
   font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.2px;
-  line-height: 1.1;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  line-height: 1;
 }
 
 .subtitle {
-  font-size: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: #8892a6;
+  color: var(--text-dim);
 }
 
 .group {
@@ -50,21 +45,24 @@
 }
 
 .btn {
-  background: #1b2029;
-  color: #d8dee9;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: var(--body);
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition: background 80ms linear, border-color 80ms linear, color 80ms linear;
 }
 
 .btn:hover:not(:disabled) {
-  background: #232a35;
-  border-color: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  border-color: var(--text-dim);
 }
 
 .btn:disabled {
@@ -73,18 +71,53 @@
 }
 
 .save {
-  background: #1e4a2a;
-  border-color: #2d6b3e;
-  color: #e6f5ea;
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
 }
 
 .save:hover:not(:disabled) {
-  background: #2d6b3e;
-  border-color: #3a8a50;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .save:disabled {
-  background: #1b2029;
-  border-color: rgba(255, 255, 255, 0.07);
-  color: #5c6781;
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--rule);
+}
+
+.viewToggle {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.viewToggle .btn {
+  border: none;
+  border-radius: 0;
+  height: 30px;
+  padding: 0 12px;
+  color: var(--text-dim);
+  background: transparent;
+}
+
+.viewToggle .btn + .btn {
+  border-left: 1px solid var(--rule);
+}
+
+.viewToggle .btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.viewToggle .active {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.viewToggle .active:hover:not(:disabled) {
+  color: var(--bg);
+  background: var(--accent-hover);
 }

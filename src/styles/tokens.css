@@ -1,0 +1,21 @@
+/* Genesara design tokens.
+   Three colors + paper tint. Three families. */
+
+:root {
+  --bg: #0e0f12;
+  --text: #e8e5de;
+  --text-dim: #9a968d;
+  --accent: #c8a35e;
+  --accent-hover: #d4b06a;
+  --paper: #1a1814;
+  --rule: #2b2a26;
+
+  /* operator-tool status — used sparingly */
+  --hostile: #c46a52;
+  --friendly: #6a9466;
+  --warn: #d4b06a;
+
+  --display: 'Fraunces', 'Times New Roman', serif;
+  --body: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}

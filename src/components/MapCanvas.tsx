@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layer, Shape, Stage, Rect, Line } from 'react-konva';
 import type Konva from 'konva';
-import type { Node, TerrainType } from '../types';
+import type { Node, StarterNode, TerrainType } from '../types';
 import { terrainColors } from '../constants/terrainColors';
+import { raceColorFor } from '../constants/raceColors';
+import { normalizeRaceId } from '../utils/enums';
 import { keyOf } from '../utils/keyOf';
 import type { HexGridApi } from '../hooks/useHexGrid';
 import styles from './MapCanvas.module.css';
@@ -12,10 +14,16 @@ interface MapCanvasProps {
   nodes: Map<string, Node>;
   dirty: Map<string, Node>;
   selectedTerrain: TerrainType;
+  /** Starter mappings for the *current* world, used to render markers on tiles in this region. */
+  starters: StarterNode[];
+  /** Lookup by hex tile id for tiles in the currently loaded region. */
+  tilesById: Map<number, Node>;
   onPaint: (q: number, r: number) => void;
   onPaintMany: (coords: Array<{ q: number; r: number }>) => void;
   onHoverChange: (info: { q: number; r: number; terrain: TerrainType | null } | null) => void;
   onZoomChange: (zoom: number) => void;
+  /** Right-click on a tile. (q, r) is the axial coord; sx/sy are screen (clientX/Y) for menu anchoring. */
+  onTileContextMenu: (q: number, r: number, sx: number, sy: number) => void;
   loading: boolean;
 }
 
@@ -27,10 +35,13 @@ export function MapCanvas({
   nodes,
   dirty,
   selectedTerrain,
+  starters,
+  tilesById,
   onPaint,
   onPaintMany,
   onHoverChange,
   onZoomChange,
+  onTileContextMenu,
   loading,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -263,8 +274,68 @@ export function MapCanvas({
     };
   }, [dirty, hexApi]);
 
+  // Group starters by tile id so multiple races on the same tile can stack visually.
+  const startersInRegion = useMemo(() => {
+    const out = new Map<number, string[]>();
+    for (const s of starters) {
+      const tile = tilesById.get(s.nodeId);
+      if (!tile) continue;
+      const list = out.get(s.nodeId) ?? [];
+      list.push(normalizeRaceId(s.raceId));
+      out.set(s.nodeId, list);
+    }
+    return out;
+  }, [starters, tilesById]);
+
+  const drawStarters = useMemo(() => {
+    return (ctx: Konva.Context) => {
+      for (const [tileId, races] of startersInRegion.entries()) {
+        const tile = tilesById.get(tileId);
+        if (!tile) continue;
+        const g = hexApi.geometry(tile.q, tile.r);
+        const r = hexApi.size * 0.32;
+        // If multiple races spawn on the same tile, fan them along the X axis.
+        const spread = (races.length - 1) * r * 0.6;
+        races.forEach((raceId, i) => {
+          const x = g.cx - spread / 2 + i * (r * 0.6);
+          ctx.beginPath();
+          ctx.arc(x, g.cy, r, 0, Math.PI * 2);
+          ctx.fillStyle = raceColorFor(raceId);
+          ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+          ctx.stroke();
+        });
+      }
+    };
+  }, [startersInRegion, tilesById, hexApi]);
+
+  const handleContextMenu = useCallback(
+    (e: Konva.KonvaEventObject<PointerEvent>) => {
+      const native = e.evt;
+      native.preventDefault();
+      const stage = e.target.getStage();
+      if (!stage) return;
+      const pt = stage.getPointerPosition();
+      if (!pt) return;
+      const world = worldFromStage(pt.x, pt.y);
+      const hex = hexApi.pointToAxial(world.x, world.y);
+      if (!hex) return;
+      // cancel any in-flight paint started by the same gesture
+      modeRef.current = null;
+      lastPaintRef.current = null;
+      onTileContextMenu(hex.q, hex.r, native.clientX, native.clientY);
+    },
+    [hexApi, onTileContextMenu, worldFromStage],
+  );
+
   return (
-    <div ref={containerRef} className={styles.root}>
+    <div
+      ref={containerRef}
+      className={styles.root}
+      // Suppress browser context menu over the canvas (Stage's onContextMenu only fires for tile hits).
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <Stage
         ref={stageRef}
         width={size.width}
@@ -277,6 +348,7 @@ export function MapCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onContextMenu={handleContextMenu}
         onWheel={handleWheel}
       >
         <Layer listening={false}>
@@ -295,11 +367,8 @@ export function MapCanvas({
             <Line
               points={hoveredGeom.corners}
               closed
-              stroke="#ffffff"
+              stroke="#c8a35e"
               strokeWidth={2 / scale}
-              shadowColor="#000"
-              shadowBlur={6 / scale}
-              shadowOpacity={0.6}
             />
           )}
           {dirty.size > 0 && (
@@ -311,16 +380,25 @@ export function MapCanvas({
               hitFunc={() => {}}
             />
           )}
+          {startersInRegion.size > 0 && (
+            <Shape
+              sceneFunc={(ctx, shape) => {
+                drawStarters(ctx);
+                ctx.fillStrokeShape(shape);
+              }}
+              hitFunc={() => {}}
+            />
+          )}
           {selectRect && (
             <Rect
               x={Math.min(selectRect.x1, selectRect.x2)}
               y={Math.min(selectRect.y1, selectRect.y2)}
               width={Math.abs(selectRect.x2 - selectRect.x1)}
               height={Math.abs(selectRect.y2 - selectRect.y1)}
-              stroke="#3b82f6"
+              stroke="#c8a35e"
               strokeWidth={1.5 / scale}
               dash={[6 / scale, 4 / scale]}
-              fill="rgba(59,130,246,0.15)"
+              fill="rgba(200,163,94,0.12)"
             />
           )}
         </Layer>

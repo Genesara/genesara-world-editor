@@ -33,6 +33,7 @@ export const biomeIcons: Record<Biome, LucideIcon> = {
   RUINS: Landmark,
   DESERT: Sun,
   TUNDRA: Snowflake,
+  OCEAN: Waves,
 };
 
 export const terrainIcons: Record<TerrainType, LucideIcon> = {
@@ -51,6 +52,7 @@ export const terrainIcons: Record<TerrainType, LucideIcon> = {
   GLACIER: Snowflake,
   VOLCANIC: Flame,
   COASTAL: Waves,
+  OCEAN: Waves,
   SHORELINE: Waves,
   RIVER_DELTA: Droplets,
   WETLANDS: Droplets,

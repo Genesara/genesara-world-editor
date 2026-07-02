@@ -16,7 +16,7 @@ export const terrainGroups: TerrainGroup[] = [
   },
   {
     label: 'Water',
-    terrains: ['COASTAL', 'RIVER_DELTA', 'WETLANDS', 'SWAMP'],
+    terrains: ['OCEAN', 'COASTAL', 'RIVER_DELTA', 'WETLANDS', 'SWAMP'],
   },
   {
     label: 'Elevated',

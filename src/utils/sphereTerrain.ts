@@ -74,7 +74,7 @@ export function createSphereTerrain(opts: SphereTerrainOpts): SphereTerrainSampl
     let sum = 0;
     let norm = 0;
     for (let o = 0; o < 4; o++) {
-      sum += n(p[0] * freq, p[1] * freq, p[2] * freq) * amp;
+      sum += n(p.x * freq, p.y * freq, p.z * freq) * amp;
       norm += amp;
       amp *= 0.5;
       freq *= 2;
@@ -85,11 +85,11 @@ export function createSphereTerrain(opts: SphereTerrainOpts): SphereTerrainSampl
   return {
     sample(centroid: Vec3): TerrainType {
       const elev = fbm(elevationNoise, centroid);
-      const moist = fbm(moistureNoise, [
-        centroid[0] + 17,
-        centroid[1] + 31,
-        centroid[2] + 53,
-      ]);
+      const moist = fbm(moistureNoise, {
+        x: centroid.x + 17,
+        y: centroid.y + 31,
+        z: centroid.z + 53,
+      });
       let terrain = classify(elev, moist);
       if (mysticalRng() < mysticalDensity) {
         terrain = MYSTICAL[Math.floor(mysticalRng() * MYSTICAL.length)];

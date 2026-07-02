@@ -1,0 +1,221 @@
+/* Genesara shared primitives.
+   Composed by component CSS modules via :global() or plain class names. */
+
+/* ───── TYPE UTILITIES ───── */
+.mono {
+  font-family: var(--mono);
+  font-feature-settings: 'ss01', 'cv11';
+}
+.display {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.dim {
+  color: var(--text-dim);
+}
+.accent {
+  color: var(--accent);
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ───── BUTTONS ───── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 3px;
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  transition: background 80ms linear, color 80ms linear, border-color 80ms linear;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--rule);
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--text-dim);
+}
+.btn-sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* ───── PANELS ───── */
+.panel {
+  border: 1px solid var(--rule);
+  background: transparent;
+  border-radius: 2px;
+}
+.panel-paper {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+/* ───── FIELDS ───── */
+.field {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  font-family: var(--body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 80ms linear;
+}
+.field:focus {
+  border-color: var(--accent);
+}
+.field-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+/* ───── KEY-VALUE ROWS ───── */
+.kv {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--rule);
+  align-items: baseline;
+}
+.kv:first-child {
+  border-top: 0;
+}
+.kv .k {
+  color: var(--text-dim);
+}
+.kv .v {
+  color: var(--text);
+}
+
+/* ───── HAIRLINE / DIVIDER ───── */
+.hairline {
+  height: 1px;
+  background: var(--rule);
+  width: 100%;
+}
+
+/* ───── STATUS DOT ───── */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+  position: relative;
+}
+.dot.online {
+  background: var(--accent);
+  box-shadow: 0 0 0 0 rgba(200, 163, 94, 0.5);
+  animation: genesara-pulse 2.6s ease-out infinite;
+}
+.dot.offline {
+  background: var(--rule);
+}
+@keyframes genesara-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(200, 163, 94, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(200, 163, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 163, 94, 0);
+  }
+}
+
+/* ───── TICKER LINE ───── */
+.ticker-line {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.ticker-line .t {
+  color: var(--accent);
+}
+.ticker-line .v {
+  color: var(--text);
+}
+
+/* ───── TABLE ───── */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.tbl th,
+.tbl td {
+  padding: 12px 14px;
+  text-align: left;
+  border-top: 1px solid var(--rule);
+  vertical-align: middle;
+}
+.tbl thead th {
+  font-weight: 500;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-top: 0;
+}
+
+/* ───── WORDMARK ───── */
+.wordmark {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  font-feature-settings: 'ss01';
+  text-decoration: none;
+}

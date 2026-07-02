@@ -14,9 +14,9 @@ export interface MeshGeometry {
 
 function scaleOutward(v: Vec3, offset: number): Vec3 {
   if (offset === 0) return v;
-  const m = Math.hypot(v[0], v[1], v[2]) || 1;
+  const m = Math.hypot(v.x, v.y, v.z) || 1;
   const k = (m + offset) / m;
-  return [v[0] * k, v[1] * k, v[2] * k];
+  return { x: v.x * k, y: v.y * k, z: v.z * k };
 }
 
 export function blendedFaceColor(
@@ -69,12 +69,12 @@ function buildFromNodes(nodes: GlobeNode[], opts: BuildOptions): MeshGeometry {
       const a = cc;
       const bv = scaleOutward(verts[i], radiusOffset);
       const d = scaleOutward(verts[(i + 1) % verts.length], radiusOffset);
-      positions.push(a[0], a[1], a[2], bv[0], bv[1], bv[2], d[0], d[1], d[2]);
+      positions.push(a.x, a.y, a.z, bv.x, bv.y, bv.z, d.x, d.y, d.z);
       if (opts.withColors) {
         colors.push(r, g, b, r, g, b, r, g, b);
       }
       if (opts.withCentroidAttr) {
-        centroids.push(c[0], c[1], c[2], c[0], c[1], c[2], c[0], c[1], c[2]);
+        centroids.push(c.x, c.y, c.z, c.x, c.y, c.z, c.x, c.y, c.z);
       }
       triToIdx.push(node.sphere_index);
     }
@@ -138,7 +138,7 @@ export function buildFaceEdgesGeometry(
     for (let i = 0; i < verts.length; i++) {
       const a = scaleOutward(verts[i], radiusOffset);
       const b = scaleOutward(verts[(i + 1) % verts.length], radiusOffset);
-      pts.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+      pts.push(a.x, a.y, a.z, b.x, b.y, b.z);
     }
   }
   const geometry = new THREE.BufferGeometry();

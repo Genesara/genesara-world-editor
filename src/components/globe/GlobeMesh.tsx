@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
-import type { ClimateType, GlobeNode } from '../../types';
+import type { ClimateType, GlobeNode, Vec3 } from '../../types';
 import { isCreatedNode } from '../../types';
 import { allClimates } from '../../constants/climateGroups';
 import { EMPTY_FACE_COLOR } from '../../constants/climateColors';
@@ -159,7 +159,7 @@ export function GlobeMesh({
   const dimBase = highlightClimate != null;
 
   const highlightFaces = useMemo(() => {
-    const out: Array<{ key: string; vertices: [number, number, number][]; color: string }> = [];
+    const out: Array<{ key: string; vertices: Vec3[]; color: string }> = [];
     if (hoveredIndex != null) {
       const node = nodes.get(hoveredIndex);
       if (node) {
@@ -275,15 +275,15 @@ function FaceOutline({
   vertices,
   color,
 }: {
-  vertices: [number, number, number][];
+  vertices: Vec3[];
   color: string;
 }) {
   const geometry = useMemo(() => {
     const pts: number[] = [];
-    const expand = (v: [number, number, number]) => {
-      const m = Math.hypot(v[0], v[1], v[2]) || 1;
+    const expand = (v: Vec3): [number, number, number] => {
+      const m = Math.hypot(v.x, v.y, v.z) || 1;
       const k = (m + 0.005) / m;
-      return [v[0] * k, v[1] * k, v[2] * k] as [number, number, number];
+      return [v.x * k, v.y * k, v.z * k];
     };
     for (let i = 0; i < vertices.length; i++) {
       const ea = expand(vertices[i]);

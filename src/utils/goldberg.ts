@@ -1,5 +1,10 @@
 import type { Vec3 } from '../types';
 
+/** Internal tuple form used for tight vector math. Converted to {x,y,z} on output. */
+type V3 = [number, number, number];
+
+const toVec3 = (v: V3): Vec3 => ({ x: v[0], y: v[1], z: v[2] });
+
 export interface GoldbergFace {
   index: number;
   centroid: Vec3;
@@ -15,24 +20,24 @@ export interface GoldbergMesh {
 
 const PHI = (1 + Math.sqrt(5)) / 2;
 
-function normalize(v: Vec3): Vec3 {
+function normalize(v: V3): V3 {
   const m = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / m, v[1] / m, v[2] / m];
 }
 
-function sub(a: Vec3, b: Vec3): Vec3 {
+function sub(a: V3, b: V3): V3 {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
-function scale(a: Vec3, s: number): Vec3 {
+function scale(a: V3, s: number): V3 {
   return [a[0] * s, a[1] * s, a[2] * s];
 }
 
-function dot(a: Vec3, b: Vec3): number {
+function dot(a: V3, b: V3): number {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-function cross(a: Vec3, b: Vec3): Vec3 {
+function cross(a: V3, b: V3): V3 {
   return [
     a[1] * b[2] - a[2] * b[1],
     a[2] * b[0] - a[0] * b[2],
@@ -40,14 +45,14 @@ function cross(a: Vec3, b: Vec3): Vec3 {
   ];
 }
 
-function vertexKey(v: Vec3): string {
+function vertexKey(v: V3): string {
   const p = 1e6;
   return `${Math.round(v[0] * p)}|${Math.round(v[1] * p)}|${Math.round(v[2] * p)}`;
 }
 
-function baseIcosahedron(): { vertices: Vec3[]; faces: [number, number, number][] } {
+function baseIcosahedron(): { vertices: V3[]; faces: [number, number, number][] } {
   const t = PHI;
-  const raw: Vec3[] = [
+  const raw: V3[] = [
     [-1, t, 0],
     [1, t, 0],
     [-1, -t, 0],
@@ -88,7 +93,7 @@ function baseIcosahedron(): { vertices: Vec3[]; faces: [number, number, number][
 }
 
 interface GeodesicMesh {
-  vertices: Vec3[];
+  vertices: V3[];
   triangles: [number, number, number][];
   vertexTriangles: number[][];
   edgeMap: Map<string, [number, number]>;
@@ -100,10 +105,10 @@ function edgeKey(a: number, b: number): string {
 
 function buildGeodesic(T: number): GeodesicMesh {
   const base = baseIcosahedron();
-  const vertices: Vec3[] = [];
+  const vertices: V3[] = [];
   const vertexIndex = new Map<string, number>();
 
-  const addVertex = (v: Vec3): number => {
+  const addVertex = (v: V3): number => {
     const n = normalize(v);
     const key = vertexKey(n);
     const existing = vertexIndex.get(key);
@@ -127,7 +132,7 @@ function buildGeodesic(T: number): GeodesicMesh {
       grid[i] = [];
       for (let j = 0; j <= T - i; j++) {
         const k = T - i - j;
-        const p: Vec3 = [
+        const p: V3 = [
           (i * A[0] + j * B[0] + k * C[0]) / T,
           (i * A[1] + j * B[1] + k * C[1]) / T,
           (i * A[2] + j * B[2] + k * C[2]) / T,
@@ -172,7 +177,7 @@ function buildGeodesic(T: number): GeodesicMesh {
   return { vertices, triangles, vertexTriangles, edgeMap };
 }
 
-function triangleCentroid(tri: [number, number, number], verts: Vec3[]): Vec3 {
+function triangleCentroid(tri: [number, number, number], verts: V3[]): V3 {
   const [a, b, c] = tri;
   return normalize([
     (verts[a][0] + verts[b][0] + verts[c][0]) / 3,
@@ -181,11 +186,11 @@ function triangleCentroid(tri: [number, number, number], verts: Vec3[]): Vec3 {
   ]);
 }
 
-function pickOrthogonal(n: Vec3): Vec3 {
+function pickOrthogonal(n: V3): V3 {
   const ax = Math.abs(n[0]);
   const ay = Math.abs(n[1]);
   const az = Math.abs(n[2]);
-  const ref: Vec3 = ax < ay && ax < az ? [1, 0, 0] : ay < az ? [0, 1, 0] : [0, 0, 1];
+  const ref: V3 = ax < ay && ax < az ? [1, 0, 0] : ay < az ? [0, 1, 0] : [0, 0, 1];
   const u = normalize(sub(ref, scale(n, dot(ref, n))));
   return u;
 }
@@ -195,13 +200,13 @@ export function generateGoldberg(T: number): GoldbergMesh {
     throw new Error(`generateGoldberg requires integer T >= 1, got ${T}`);
   }
   const geo = buildGeodesic(T);
-  const triCentroids: Vec3[] = geo.triangles.map((tri) => triangleCentroid(tri, geo.vertices));
+  const triCentroids: V3[] = geo.triangles.map((tri) => triangleCentroid(tri, geo.vertices));
 
   // For each geodesic vertex build a Goldberg face.
   // First, compute raw faces (unsorted corners + raw neighbors from triangle adjacency).
   const faces: GoldbergFace[] = geo.vertices.map((v, vi) => {
     const tris = geo.vertexTriangles[vi];
-    const corners: Vec3[] = tris.map((tIdx) => triCentroids[tIdx]);
+    const corners: V3[] = tris.map((tIdx) => triCentroids[tIdx]);
 
     const u = pickOrthogonal(v);
     const w = normalize(cross(v, u));
@@ -213,7 +218,7 @@ export function generateGoldberg(T: number): GoldbergMesh {
     });
     indexed.sort((a, b) => a.angle - b.angle);
 
-    const sortedCorners: Vec3[] = indexed.map(({ i }) => corners[i]);
+    const sortedCorners: V3[] = indexed.map(({ i }) => corners[i]);
     const sortedTris: number[] = indexed.map(({ i }) => tris[i]);
 
     // Compute neighbors: neighbor k is opposite the edge between corner k and corner k+1.
@@ -233,7 +238,7 @@ export function generateGoldberg(T: number): GoldbergMesh {
     }
 
     // Centroid of the Goldberg face.
-    const cSum: Vec3 = sortedCorners.reduce<Vec3>(
+    const cSum: V3 = sortedCorners.reduce<V3>(
       (acc, c) => [acc[0] + c[0], acc[1] + c[1], acc[2] + c[2]],
       [0, 0, 0],
     );
@@ -260,8 +265,8 @@ export function generateGoldberg(T: number): GoldbergMesh {
 
     return {
       index: vi,
-      centroid,
-      vertices: sortedCorners,
+      centroid: toVec3(centroid),
+      vertices: sortedCorners.map(toVec3),
       neighbors,
       isPentagon: sortedCorners.length === 5,
     };

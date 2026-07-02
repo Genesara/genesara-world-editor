@@ -8,6 +8,11 @@
   cursor: crosshair;
 }
 
+.canvas {
+  width: 100%;
+  height: 100%;
+}
+
 .loading {
   position: absolute;
   inset: 0;
@@ -65,4 +70,31 @@
 
 .hoverHint {
   color: var(--text-dim);
+}
+
+.orbitToggle {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--paper);
+  color: var(--text);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 80ms linear;
+}
+
+.orbitToggle:hover {
+  border-color: var(--text-dim);
+}
+
+.orbitToggle input {
+  accent-color: var(--accent);
 }

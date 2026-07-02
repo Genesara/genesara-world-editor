@@ -21,6 +21,7 @@ export const terrainColors: Record<TerrainType, string> = {
   RIVER_DELTA: '#4a90a4',
   WETLANDS: '#5a7d6a',
   SWAMP: '#2d4a42',
+  OCEAN: '#1f4263',
 
   // Elevated
   MOUNTAIN: '#6b6b6b',

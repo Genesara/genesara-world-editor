@@ -1,7 +1,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 11, 0.72);
+  background: rgba(14, 15, 18, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10,50 +10,25 @@
 }
 
 .dialog {
-  background: #0f1620;
-  color: #e8ecf1;
-  border: 1px solid #2a3442;
-  border-radius: 10px;
-  padding: 16px 18px;
+  background: var(--paper);
+  color: var(--text);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 20px 22px;
   width: min(540px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-/* Themed scrollbar to match the dark UI */
-.dialog {
-  scrollbar-width: thin;
-  scrollbar-color: #2a3442 #0a0f17;
-}
-
-.dialog::-webkit-scrollbar {
-  width: 8px;
-}
-
-.dialog::-webkit-scrollbar-track {
-  background: #0a0f17;
-  border-radius: 4px;
-}
-
-.dialog::-webkit-scrollbar-thumb {
-  background: #2a3442;
-  border-radius: 4px;
-  border: 1px solid #0a0f17;
-}
-
-.dialog::-webkit-scrollbar-thumb:hover {
-  background: #3a4a5c;
 }
 
 .title {
   margin: 0;
-  font-size: 16px;
+  font-family: var(--display);
   font-weight: 600;
-  letter-spacing: 0.2px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
 }
 
 .field {
@@ -65,27 +40,33 @@
 .sectionHeader {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
 }
 
 .sectionLabel {
-  color: #e8ecf1;
+  color: var(--text-dim);
   text-transform: uppercase;
 }
 
 .sectionSelection {
-  color: #e8ecf1;
-  font-weight: 500;
+  color: var(--text);
+  text-transform: none;
   letter-spacing: 0;
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .sectionMuted {
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-dim);
   font-weight: 400;
   letter-spacing: 0;
+  text-transform: none;
+  font-family: var(--body);
+  font-size: 13px;
 }
 
 .groups {
@@ -106,12 +87,13 @@
 }
 
 .groupLabel {
-  font-size: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.45);
-  padding-bottom: 3px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .cardGrid {
@@ -123,33 +105,28 @@
 .card {
   position: relative;
   min-height: 56px;
-  padding: 5px 4px 5px;
-  border-radius: 7px;
-  border: 2px solid transparent;
+  padding: 5px 4px;
+  border-radius: 2px;
+  border: 1px solid transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
   cursor: pointer;
-  font-family: inherit;
+  font-family: var(--body);
   color: #fff;
   overflow: hidden;
-  transition: transform 0.15s ease, filter 0.15s ease, border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: filter 120ms ease, border-color 120ms ease;
 }
 
 .card:hover {
-  filter: brightness(1.2);
-  transform: scale(1.05);
-  z-index: 1;
+  filter: brightness(1.15);
 }
 
 .cardSelected {
-  border-color: #ffffff;
+  border-color: var(--accent);
   filter: brightness(1.2);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .cardIcon {
@@ -157,24 +134,23 @@
   align-items: center;
   justify-content: center;
   height: 22px;
-  /* color set inline (light vs dark text per background luminance) */
-  transition: color 0.15s ease;
+  transition: color 120ms ease;
 }
 
 .cardLabel {
   display: block;
   width: 100%;
-  font-size: 9px;
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-align: center;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding: 0 2px;
-  /* color set inline (light vs dark text per background luminance) */
 }
 
 .cardCheck {
@@ -195,10 +171,10 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: #0a0f17;
-  border: 1px solid #1a2230;
+  padding: 12px 14px;
+  border-radius: 2px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
 }
 
 .previewHex {
@@ -218,46 +194,50 @@
 }
 
 .previewTerrain {
-  font-size: 14px;
+  font-family: var(--display);
+  font-size: 16px;
   font-weight: 600;
-  color: #e8ecf1;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 .previewClimate {
+  font-family: var(--mono);
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-dim);
 }
 
 .previewEmpty {
+  font-family: var(--mono);
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-dim);
 }
 
 .effectHint {
+  font-family: var(--mono);
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-dim);
   margin-top: 2px;
 }
 
-/* Tiny CSS-only effect hints on the preview hex (purely decorative) */
 .fx_BLUE_PULSE,
 .fx_GREEN_PULSE,
 .fx_VOLCANIC_GLOW,
 .fx_RIPPLE {
-  animation: pulse 2.4s ease-in-out infinite;
+  animation: cardpulse 2.4s ease-in-out infinite;
 }
 
 .fx_SNOW_SHIMMER,
 .fx_GREEN_SHIMMER,
 .fx_SPARKLE {
-  animation: shimmer 1.6s linear infinite;
+  animation: cardshimmer 1.6s linear infinite;
 }
 
 .fx_HEAT_SHIMMER {
-  animation: wobble 1.6s ease-in-out infinite;
+  animation: cardwobble 1.6s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes cardpulse {
   0%,
   100% {
     filter: brightness(1);
@@ -267,7 +247,7 @@
   }
 }
 
-@keyframes shimmer {
+@keyframes cardshimmer {
   0%,
   100% {
     box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.05);
@@ -277,7 +257,7 @@
   }
 }
 
-@keyframes wobble {
+@keyframes cardwobble {
   0%,
   100% {
     transform: skewX(0deg);
@@ -295,32 +275,36 @@
 }
 
 .btn {
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid #2a3442;
-  background: #1b2029;
-  color: #e8ecf1;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
+  font-family: var(--body);
   font-size: 13px;
-  font-family: inherit;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  font-weight: 500;
+  transition: border-color 80ms linear;
 }
 
 .btn:hover:not(:disabled) {
-  border-color: #3a4a5c;
+  border-color: var(--text-dim);
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .primary {
-  background: #1f3d2a;
-  border-color: #3a6a4a;
-  color: #c8e8d4;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
 }
 
 .primary:hover:not(:disabled) {
-  border-color: #4fb87a;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }

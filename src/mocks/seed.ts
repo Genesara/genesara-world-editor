@@ -15,6 +15,7 @@ const BIOME_TO_TERRAIN: Record<Biome, TerrainType> = {
   RUINS: 'ANCIENT_RUINS',
   DESERT: 'DESERT',
   TUNDRA: 'ICE_TUNDRA',
+  OCEAN: 'OCEAN',
 };
 
 /**

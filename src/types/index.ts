@@ -17,6 +17,7 @@ export type TerrainType =
   | 'RIVER_DELTA'
   | 'WETLANDS'
   | 'SWAMP'
+  | 'OCEAN'
   // Elevated
   | 'MOUNTAIN'
   | 'ALPINE'
@@ -40,7 +41,7 @@ export type TerrainType =
   | 'TRADE_ROUTE';
 
 /**
- * Coarse classification for an icosphere face (a region on the globe). Eight values match the
+ * Coarse classification for an icosphere face (a region on the globe). Nine values match the
  * backend `Biome` enum. Per-tile fine terrain still uses [TerrainType].
  */
 export type Biome =
@@ -51,7 +52,8 @@ export type Biome =
   | 'SWAMP'
   | 'RUINS'
   | 'DESERT'
-  | 'TUNDRA';
+  | 'TUNDRA'
+  | 'OCEAN';
 
 export interface Node {
   id?: number;
@@ -70,7 +72,15 @@ export interface World {
   created_at?: string;
 }
 
-export type Vec3 = [number, number, number];
+/**
+ * 3D point as a named-axis object. Matches the backend wire format for
+ * `face_vertices` and `centroid`: `{"x":..,"y":..,"z":..}`.
+ */
+export interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
 
 export type ClimateType =
   | 'ARCTIC'
@@ -104,7 +114,44 @@ export function isCreatedNode(
   return node.biome !== null && node.climate !== null;
 }
 
+export type Rarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+
+export type RaceId = string;
+
+export interface StarterNode {
+  raceId: RaceId;
+  nodeId: number;
+}
+
+export type ItemCategory = 'EQUIPMENT' | 'CONSUMABLE' | 'MATERIAL';
+
+export interface ItemCatalogEntry {
+  itemId: string;
+  category: ItemCategory;
+  maxDurability: number | null;
+  defaultRarity: Rarity;
+}
+
+export interface EquipmentInstance {
+  instanceId: string;
+  itemId: string;
+  rarity: Rarity;
+  durabilityCurrent: number;
+  durabilityMax: number;
+  creatorAgentId: string | null;
+  createdAtTick: number;
+}
+
+export interface ProblemDetail {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+  instance: string;
+}
+
 export type ViewState =
   | { type: 'worlds' }
   | { type: 'globe'; worldId: number }
-  | { type: 'editor'; worldId: number; sphereIndex: number };
+  | { type: 'editor'; worldId: number; sphereIndex: number }
+  | { type: 'admin' };
