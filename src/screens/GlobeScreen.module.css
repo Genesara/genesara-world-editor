@@ -4,10 +4,8 @@
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  background: #05070b;
-  color: #e8ecf1;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
   overflow: hidden;
 }
 
@@ -16,43 +14,50 @@
   top: 0;
   left: 0;
   right: 0;
-  padding: 12px 16px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   z-index: 2;
-  background: linear-gradient(to bottom, rgba(5, 7, 11, 0.75), transparent);
+  background: linear-gradient(to bottom, rgba(14, 15, 18, 0.85), transparent);
 }
 
 .back {
-  background: #141b25;
-  border: 1px solid #2a3442;
-  color: #c4cbd5;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 13px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  color: var(--text);
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 3px;
+  font-family: var(--body);
+  font-size: 12px;
   cursor: pointer;
-  font-family: inherit;
+  transition: border-color 80ms linear;
 }
 
 .back:hover {
-  border-color: #3a6a8e;
+  border-color: var(--text-dim);
 }
 
 .breadcrumb {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .breadWorld {
-  font-size: 14px;
+  font-family: var(--display);
+  font-size: 18px;
   font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .breadMeta {
+  font-family: var(--mono);
   font-size: 11px;
-  color: #8a94a3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
 .headerSpacer {
@@ -60,23 +65,25 @@
 }
 
 .toggle {
-  background: #141b25;
-  border: 1px solid #2a3442;
-  color: #c4cbd5;
-  padding: 6px 12px;
-  border-radius: 6px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  color: var(--text);
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 3px;
+  font-family: var(--body);
   font-size: 12px;
   cursor: pointer;
-  font-family: inherit;
+  transition: border-color 80ms linear;
 }
 
 .toggle:hover {
-  border-color: #3a6a8e;
+  border-color: var(--text-dim);
 }
 
 .toggleActive {
-  border-color: #3a6a8e;
-  color: #cfe3f3;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .canvasWrap {
@@ -91,16 +98,17 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: #8a94a3;
-  font-size: 14px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 13px;
 }
 
 .error {
-  color: #f6d8d8;
-  background: #3e1b1b;
-  border: 1px solid #a04a4a;
+  color: var(--hostile);
+  background: transparent;
+  border: 1px solid var(--hostile);
   padding: 10px 14px;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .panel {
@@ -109,13 +117,12 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 2;
-  background: rgba(15, 22, 32, 0.92);
-  border: 1px solid #2a3442;
-  border-radius: 10px;
-  padding: 12px 14px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 14px 16px;
   min-width: 280px;
   max-width: 360px;
-  backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -130,50 +137,61 @@
 .swatch {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .panelTitle {
-  font-size: 13px;
+  font-family: var(--display);
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   flex: 1;
 }
 
 .panelTerrain {
+  font-family: var(--mono);
   font-size: 12px;
-  color: #c4cbd5;
+  color: var(--text);
 }
 
 .panelMeta {
+  font-family: var(--mono);
   font-size: 11px;
-  color: #8a94a3;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
 }
 
 .enterBtn {
-  background: #1f3d2a;
-  border: 1px solid #3a6a4a;
-  color: #c8e8d4;
-  padding: 8px 12px;
-  border-radius: 6px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--bg);
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 3px;
+  font-family: var(--body);
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  font-family: inherit;
   margin-top: 4px;
+  transition: background 80ms linear, border-color 80ms linear;
 }
 
 .enterBtn:hover:not(:disabled) {
-  border-color: #4fb87a;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .enterBtn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .hint {
+  font-family: var(--mono);
   font-size: 11px;
-  color: #6c7685;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
   text-align: center;
 }
 
@@ -184,11 +202,12 @@
 }
 
 .panelClimate {
+  font-family: var(--mono);
   font-size: 12px;
-  color: #c4cbd5;
+  color: var(--text);
 }
 
 .emptySwatch {
-  background: #2a2a2a;
+  background: var(--rule);
   border-color: rgba(255, 255, 255, 0.18);
 }

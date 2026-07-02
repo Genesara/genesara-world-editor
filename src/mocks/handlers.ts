@@ -1,17 +1,45 @@
 import { http, HttpResponse } from 'msw';
-import type { Biome, ClimateType, GlobeNode, Node, Vec3 } from '../types';
+import type {
+  Biome,
+  ClimateType,
+  EquipmentInstance,
+  GlobeNode,
+  Node,
+  Rarity,
+  Vec3,
+} from '../types';
+import {
+  isBiome,
+  isClimate,
+  isKnownRace,
+  isRarity,
+  isTerrain,
+  isUuid,
+  NON_TRAVERSABLE_TERRAINS,
+  normalizeRaceId,
+} from '../utils/enums';
 import { keyOf } from '../utils/keyOf';
+import { problemResponse } from '../utils/problemDetail';
+import { bootstrapMockCatalogs } from './catalogs';
 import { buildWorldWithNodes, seedHexesForGlobeNode } from './seed';
 import {
+  appendAgentEquipment,
+  deleteStarterNode,
+  findHexInWorld,
   getGlobeNode,
   getGlobeNodes,
   getHexes,
+  getItem,
+  getStarterNodes,
   getWorld,
+  isAgentRegistered,
   listWorlds,
+  nextTick,
   nextWorldId,
   saveGlobeNodes,
   saveHexes,
   saveWorlds,
+  setStarterNode,
 } from './storage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
@@ -40,6 +68,17 @@ interface PatchGlobeNodeBody {
   climate?: ClimateType | null;
 }
 
+interface PutStarterNodeBody {
+  nodeId: number;
+}
+
+interface SeedEquipmentBody {
+  itemId: string;
+  rarity?: Rarity;
+  durabilityCurrent?: number;
+  creatorAgentId?: string | null;
+}
+
 function ensureDemoWorld(): void {
   if (listWorlds().length > 0) return;
   const id = nextWorldId();
@@ -54,8 +93,37 @@ function ensureDemoWorld(): void {
 }
 
 ensureDemoWorld();
+bootstrapMockCatalogs();
+
+// Bootstrap admin for the in-browser mock backend. Matches the production
+// contract: HTTP Basic auth → bearer token. Real deployments configure these
+// via ADMIN_BOOTSTRAP_USERNAME / ADMIN_BOOTSTRAP_PASSWORD on the server.
+const MOCK_ADMIN_USERNAME = 'admin';
+const MOCK_ADMIN_PASSWORD = 'secret';
+const MOCK_ADMIN_TOKEN = 'mock-admin-bearer-token';
 
 export const handlers = [
+  // ---- Auth ----
+  http.post(`${BASE_URL}/admin/login`, ({ request }) => {
+    const auth = request.headers.get('authorization') ?? '';
+    if (!auth.toLowerCase().startsWith('basic ')) {
+      return problemResponse(401, 'Unauthorized', 'Missing Basic auth header', request);
+    }
+    let decoded: string;
+    try {
+      decoded = atob(auth.slice(6).trim());
+    } catch {
+      return problemResponse(401, 'Unauthorized', 'Malformed credentials', request);
+    }
+    const sep = decoded.indexOf(':');
+    const user = sep >= 0 ? decoded.slice(0, sep) : decoded;
+    const pass = sep >= 0 ? decoded.slice(sep + 1) : '';
+    if (user !== MOCK_ADMIN_USERNAME || pass !== MOCK_ADMIN_PASSWORD) {
+      return problemResponse(401, 'Unauthorized', 'Invalid credentials', request);
+    }
+    return HttpResponse.json({ token: MOCK_ADMIN_TOKEN });
+  }),
+
   // ---- Worlds ----
   http.get(`${BASE_URL}/api/worlds`, () => {
     return HttpResponse.json(listWorlds());
@@ -66,10 +134,20 @@ export const handlers = [
     try {
       body = (await request.json()) as CreateWorldBody;
     } catch {
-      return HttpResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      return problemResponse(400, 'Bad Request', 'Invalid JSON body', request);
     }
-    if (!body?.name || !Number.isFinite(body.node_count) || !Number.isFinite(body.node_size)) {
-      return HttpResponse.json({ error: 'Invalid body' }, { status: 400 });
+    const errors: string[] = [];
+    if (!body || typeof body.name !== 'string' || body.name.trim() === '') {
+      errors.push('name: must not be blank');
+    }
+    if (!body || !Number.isFinite(body.node_count) || body.node_count <= 0) {
+      errors.push('nodeCount: must be greater than 0');
+    }
+    if (!body || !Number.isFinite(body.node_size) || body.node_size <= 0) {
+      errors.push('nodeSize: must be greater than 0');
+    }
+    if (errors.length > 0) {
+      return problemResponse(400, 'Bad Request', errors.join('; '), request);
     }
     const id = nextWorldId();
     const { world, globeNodes } = buildWorldWithNodes({
@@ -85,18 +163,18 @@ export const handlers = [
     return HttpResponse.json(world, { status: 201 });
   }),
 
-  http.get(`${BASE_URL}/api/worlds/:worldId`, ({ params }) => {
+  http.get(`${BASE_URL}/api/worlds/:worldId`, ({ params, request }) => {
     const worldId = Number(params.worldId);
     const world = getWorld(worldId);
-    if (!world) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!world) return problemResponse(404, 'Not Found', 'World not found', request);
     return HttpResponse.json(world);
   }),
 
   // ---- Globe nodes ----
-  http.get(`${BASE_URL}/api/worlds/:worldId/nodes`, ({ params }) => {
+  http.get(`${BASE_URL}/api/worlds/:worldId/nodes`, ({ params, request }) => {
     const worldId = Number(params.worldId);
     if (!getWorld(worldId)) {
-      return HttpResponse.json({ error: 'World not found' }, { status: 404 });
+      return problemResponse(404, 'Not Found', 'World not found', request);
     }
     return HttpResponse.json(getGlobeNodes(worldId));
   }),
@@ -104,33 +182,37 @@ export const handlers = [
   http.post(`${BASE_URL}/api/worlds/:worldId/nodes`, async ({ params, request }) => {
     const worldId = Number(params.worldId);
     if (!getWorld(worldId)) {
-      return HttpResponse.json({ error: 'World not found' }, { status: 404 });
+      return problemResponse(404, 'Not Found', 'World not found', request);
     }
     let body: CreateGlobeNodeBody;
     try {
       body = (await request.json()) as CreateGlobeNodeBody;
     } catch {
-      return HttpResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      return problemResponse(400, 'Bad Request', 'Invalid JSON body', request);
     }
-    if (
-      !body ||
-      !Number.isFinite(body.sphere_index) ||
-      !body.biome ||
-      !body.climate
-    ) {
-      return HttpResponse.json(
-        { error: 'sphere_index, biome, and climate are required' },
-        { status: 400 },
-      );
+    const errors: string[] = [];
+    if (!body || !Number.isFinite(body.sphere_index) || body.sphere_index < 0) {
+      errors.push('sphere_index: must be ≥ 0');
+    }
+    if (!body || !isBiome(body.biome)) {
+      errors.push('biome: must be a known Biome value');
+    }
+    if (!body || !isClimate(body.climate)) {
+      errors.push('climate: must be a known Climate value');
+    }
+    if (errors.length > 0) {
+      return problemResponse(400, 'Bad Request', errors.join('; '), request);
     }
     const existing = getGlobeNodes(worldId);
     const byIndex = new Map<number, GlobeNode>();
     for (const n of existing) byIndex.set(n.sphere_index, n);
     const prior = byIndex.get(body.sphere_index);
     if (!prior && (!body.face_vertices || !body.centroid || !body.neighbor_indices)) {
-      return HttpResponse.json(
-        { error: 'face_vertices, centroid, and neighbor_indices required for new face' },
-        { status: 400 },
+      return problemResponse(
+        400,
+        'Bad Request',
+        'face_vertices, centroid, and neighbor_indices required for new face',
+        request,
       );
     }
     const next: GlobeNode = {
@@ -157,17 +239,24 @@ export const handlers = [
       const worldId = Number(params.worldId);
       const sphereIndex = Number(params.sphereIndex);
       if (!getWorld(worldId)) {
-        return HttpResponse.json({ error: 'World not found' }, { status: 404 });
+        return problemResponse(404, 'Not Found', 'World not found', request);
       }
       const prior = getGlobeNode(worldId, sphereIndex);
       if (!prior) {
-        return HttpResponse.json({ error: 'Node not found' }, { status: 404 });
+        return problemResponse(404, 'Not Found', 'Node not found', request);
       }
       let body: PatchGlobeNodeBody;
       try {
         body = (await request.json()) as PatchGlobeNodeBody;
       } catch {
-        return HttpResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        return problemResponse(400, 'Bad Request', 'Invalid JSON body', request);
+      }
+      // Tri-state validation: present + non-null must be a known enum value.
+      if (body.biome !== undefined && body.biome !== null && !isBiome(body.biome)) {
+        return problemResponse(400, 'Bad Request', 'biome: must be a known Biome value', request);
+      }
+      if (body.climate !== undefined && body.climate !== null && !isClimate(body.climate)) {
+        return problemResponse(400, 'Bad Request', 'climate: must be a known Climate value', request);
       }
       const next: GlobeNode = {
         ...prior,
@@ -184,11 +273,11 @@ export const handlers = [
 
   http.get(
     `${BASE_URL}/api/worlds/:worldId/nodes/:sphereIndex`,
-    ({ params }) => {
+    ({ params, request }) => {
       const worldId = Number(params.worldId);
       const sphereIndex = Number(params.sphereIndex);
       const node = getGlobeNode(worldId, sphereIndex);
-      if (!node) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+      if (!node) return problemResponse(404, 'Not Found', 'Node not found', request);
       return HttpResponse.json(node);
     },
   ),
@@ -201,7 +290,7 @@ export const handlers = [
       const sphereIndex = Number(params.sphereIndex);
       const globeNode = getGlobeNode(worldId, sphereIndex);
       if (!globeNode) {
-        return HttpResponse.json({ error: 'Globe node not found' }, { status: 404 });
+        return problemResponse(404, 'Not Found', 'Globe node not found', request);
       }
       const url = new URL(request.url);
       const radiusParam = url.searchParams.get('radius');
@@ -228,16 +317,32 @@ export const handlers = [
       const worldId = Number(params.worldId);
       const sphereIndex = Number(params.sphereIndex);
       if (!getGlobeNode(worldId, sphereIndex)) {
-        return HttpResponse.json({ error: 'Globe node not found' }, { status: 404 });
+        return problemResponse(404, 'Not Found', 'Globe node not found', request);
       }
       let body: PatchHexesBody;
       try {
         body = (await request.json()) as PatchHexesBody;
       } catch {
-        return HttpResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        return problemResponse(400, 'Bad Request', 'Invalid JSON body', request);
       }
-      if (!body || !Array.isArray(body.nodes)) {
-        return HttpResponse.json({ error: 'Invalid body' }, { status: 400 });
+      if (!body || !Array.isArray(body.nodes) || body.nodes.length === 0) {
+        return problemResponse(400, 'Bad Request', 'nodes: must not be empty', request);
+      }
+      for (const n of body.nodes) {
+        if (!n || typeof n !== 'object') {
+          return problemResponse(400, 'Bad Request', 'nodes: each entry must be an object', request);
+        }
+        if (!Number.isFinite(n.q) || !Number.isFinite(n.r)) {
+          return problemResponse(400, 'Bad Request', 'nodes: q and r must be numbers', request);
+        }
+        if (!isTerrain(n.terrain)) {
+          return problemResponse(
+            400,
+            'Bad Request',
+            `terrain: "${String(n.terrain)}" is not a known Terrain value`,
+            request,
+          );
+        }
       }
       const existing = getHexes(worldId, sphereIndex) ?? [];
       const byKey = new Map<string, Node>();
@@ -253,4 +358,274 @@ export const handlers = [
       return HttpResponse.json({ updated: body.nodes.length });
     },
   ),
+
+  // ---- Starter nodes (race → spawn-node mapping) ----
+  http.get(
+    `${BASE_URL}/api/worlds/:worldId/starter-nodes`,
+    ({ params, request }) => {
+      const worldId = Number(params.worldId);
+      if (!getWorld(worldId)) {
+        return problemResponse(404, 'Not Found', 'World not found', request);
+      }
+      return HttpResponse.json(getStarterNodes(worldId));
+    },
+  ),
+
+  http.put(
+    `${BASE_URL}/api/worlds/:worldId/starter-nodes/:raceId`,
+    async ({ params, request }) => {
+      const worldId = Number(params.worldId);
+      const raceIdRaw = String(params.raceId);
+      const raceId = normalizeRaceId(raceIdRaw);
+      if (!getWorld(worldId)) {
+        return problemResponse(404, 'Not Found', 'World not found', request);
+      }
+      if (!isKnownRace(raceIdRaw)) {
+        return problemResponse(400, 'Bad Request', `raceId: "${raceIdRaw}" is not a known race`, request);
+      }
+      let body: PutStarterNodeBody;
+      try {
+        body = (await request.json()) as PutStarterNodeBody;
+      } catch {
+        return problemResponse(400, 'Bad Request', 'Invalid JSON body', request);
+      }
+      if (!body || !Number.isFinite(body.nodeId) || body.nodeId <= 0) {
+        return problemResponse(400, 'Bad Request', 'nodeId: must be greater than 0', request);
+      }
+      const hit = findHexInWorld(worldId, body.nodeId);
+      if (!hit) {
+        return problemResponse(
+          404,
+          'Not Found',
+          `Hex tile ${body.nodeId} not found in world ${worldId}`,
+          request,
+        );
+      }
+      if (NON_TRAVERSABLE_TERRAINS.has(hit.tile.terrain)) {
+        return problemResponse(
+          400,
+          'Bad Request',
+          `nodeId: cannot place starter on non-traversable terrain (${hit.tile.terrain})`,
+          request,
+        );
+      }
+      const saved = setStarterNode(worldId, raceId, body.nodeId);
+      return HttpResponse.json(saved);
+    },
+  ),
+
+  http.delete(
+    `${BASE_URL}/api/worlds/:worldId/starter-nodes/:raceId`,
+    ({ params, request }) => {
+      const worldId = Number(params.worldId);
+      const raceId = normalizeRaceId(String(params.raceId));
+      if (!getWorld(worldId)) {
+        return problemResponse(404, 'Not Found', 'World not found', request);
+      }
+      const removed = deleteStarterNode(worldId, raceId);
+      if (!removed) {
+        return problemResponse(
+          404,
+          'Not Found',
+          `No starter mapping for race "${raceId}"`,
+          request,
+        );
+      }
+      return new HttpResponse(null, { status: 204 });
+    },
+  ),
+
+  // ---- Equipment seeding ----
+  http.post(
+    `${BASE_URL}/admin/agents/:agentId/equipment`,
+    async ({ params, request }) => {
+      const agentId = String(params.agentId);
+      if (!isUuid(agentId)) {
+        return problemResponse(400, 'Bad Request', 'agentId: must be a valid UUID', request);
+      }
+      let body: SeedEquipmentBody;
+      try {
+        body = (await request.json()) as SeedEquipmentBody;
+      } catch {
+        return problemResponse(400, 'Bad Request', 'Invalid JSON body', request);
+      }
+      const errors: string[] = [];
+      if (!body || typeof body.itemId !== 'string' || body.itemId.trim() === '') {
+        errors.push('itemId: must not be blank');
+      }
+      if (body && body.rarity !== undefined && !isRarity(body.rarity)) {
+        errors.push('rarity: must be a known Rarity value');
+      }
+      if (
+        body &&
+        body.durabilityCurrent !== undefined &&
+        (!Number.isFinite(body.durabilityCurrent) || body.durabilityCurrent < 0)
+      ) {
+        errors.push('durabilityCurrent: must be ≥ 0');
+      }
+      if (body && body.creatorAgentId !== undefined && body.creatorAgentId !== null) {
+        if (typeof body.creatorAgentId !== 'string' || body.creatorAgentId === '' || !isUuid(body.creatorAgentId)) {
+          errors.push('creatorAgentId: must be a valid UUID, null, or omitted');
+        }
+      }
+      if (errors.length > 0) {
+        return problemResponse(400, 'Bad Request', errors.join('; '), request);
+      }
+      if (!isAgentRegistered(agentId)) {
+        return problemResponse(404, 'Not Found', `Agent ${agentId} is not registered`, request);
+      }
+      const item = getItem(body.itemId);
+      if (!item) {
+        return problemResponse(404, 'Not Found', `Item "${body.itemId}" not in catalog`, request);
+      }
+      if (item.category !== 'EQUIPMENT') {
+        return problemResponse(
+          400,
+          'Bad Request',
+          `itemId: item "${item.itemId}" has category ${item.category}, expected EQUIPMENT`,
+          request,
+        );
+      }
+      if (item.maxDurability == null) {
+        return problemResponse(
+          400,
+          'Bad Request',
+          `itemId: item "${item.itemId}" has no maxDurability`,
+          request,
+        );
+      }
+      if (
+        body.durabilityCurrent !== undefined &&
+        body.durabilityCurrent > item.maxDurability
+      ) {
+        return problemResponse(
+          400,
+          'Bad Request',
+          `durabilityCurrent: ${body.durabilityCurrent} exceeds maxDurability ${item.maxDurability}`,
+          request,
+        );
+      }
+      const instance: EquipmentInstance = {
+        instanceId: crypto.randomUUID(),
+        itemId: item.itemId,
+        rarity: body.rarity ?? item.defaultRarity,
+        durabilityCurrent: body.durabilityCurrent ?? item.maxDurability,
+        durabilityMax: item.maxDurability,
+        creatorAgentId: body.creatorAgentId ?? null,
+        createdAtTick: nextTick(),
+      };
+      appendAgentEquipment(agentId, instance);
+      return HttpResponse.json(instance, { status: 201 });
+    },
+  ),
+
+  // ---- Audit log ----
+  http.get(`${BASE_URL}/admin/audit`, ({ request }) => {
+    const url = new URL(request.url);
+    const after = Number(url.searchParams.get('after') ?? 0);
+    const limit = Number(url.searchParams.get('limit') ?? 100);
+    const entries = mockAuditEntries.filter((e) => e.seq > after).slice(0, limit);
+    const nextCursor = entries.length > 0 ? entries[entries.length - 1].seq : after;
+    return HttpResponse.json({ entries, nextCursor });
+  }),
+
+  // ---- NPC zones ----
+  http.get(`${BASE_URL}/admin/worlds/:worldId/npc-zones`, ({ params }) => {
+    const worldId = Number(params.worldId);
+    return HttpResponse.json(mockZones.filter((z) => z.worldId === worldId).map(stripWorldId));
+  }),
+  http.post(`${BASE_URL}/admin/worlds/:worldId/npc-zones`, async ({ params, request }) => {
+    const worldId = Number(params.worldId);
+    const body = (await request.json().catch(() => null)) as MockZone | null;
+    if (!body) return problemResponse(400, 'Bad Request', 'Empty body', request);
+    const zone: MockZone = {
+      worldId,
+      zoneId: crypto.randomUUID(),
+      scope: body.scope,
+      nodeId: body.nodeId,
+      regionId: body.regionId,
+      weights: body.weights ?? {},
+      maxConcurrent: body.maxConcurrent ?? 5,
+      respawnTicks: body.respawnTicks,
+      active: body.active ?? true,
+    };
+    mockZones.push(zone);
+    return HttpResponse.json(stripWorldId(zone), { status: 201 });
+  }),
+  http.patch(`${BASE_URL}/admin/worlds/:worldId/npc-zones/:zoneId`, async ({ params, request }) => {
+    const worldId = Number(params.worldId);
+    const idx = mockZones.findIndex((z) => z.worldId === worldId && z.zoneId === params.zoneId);
+    if (idx === -1) return new HttpResponse(null, { status: 404 });
+    const patch = (await request.json().catch(() => ({}))) as Partial<MockZone>;
+    const existing = mockZones[idx];
+    const updated: MockZone = {
+      ...existing,
+      weights: patch.weights ?? existing.weights,
+      maxConcurrent: patch.maxConcurrent ?? existing.maxConcurrent,
+      respawnTicks: 'respawnTicks' in patch ? patch.respawnTicks : existing.respawnTicks,
+      active: patch.active ?? existing.active,
+    };
+    mockZones[idx] = updated;
+    return HttpResponse.json(stripWorldId(updated));
+  }),
+  http.delete(`${BASE_URL}/admin/worlds/:worldId/npc-zones/:zoneId`, ({ params }) => {
+    const worldId = Number(params.worldId);
+    const idx = mockZones.findIndex((z) => z.worldId === worldId && z.zoneId === params.zoneId);
+    if (idx === -1) return new HttpResponse(null, { status: 404 });
+    mockZones.splice(idx, 1);
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];
+
+interface MockZone {
+  worldId: number;
+  zoneId: string;
+  scope: 'REGION' | 'NODE';
+  regionId?: number;
+  nodeId?: number;
+  weights: Record<string, number>;
+  maxConcurrent: number;
+  respawnTicks?: number;
+  active: boolean;
+}
+
+const mockZones: MockZone[] = [];
+
+function stripWorldId(z: MockZone): Omit<MockZone, 'worldId'> {
+  const { worldId: _w, ...rest } = z;
+  return rest;
+}
+
+interface MockAuditEntry {
+  seq: number;
+  adminId: string;
+  action: string;
+  target: string;
+  targetId: string;
+  payload: unknown;
+  tick: number;
+  occurredAt: string;
+}
+
+// Seed a handful of audit entries so the drawer isn't empty in dev.
+const mockAuditEntries: MockAuditEntry[] = (() => {
+  const adminId = '00000000-0000-4000-8000-000000000001';
+  const now = Date.now();
+  const seed: Array<[number, string, string, string, unknown]> = [
+    [1, 'agent.spawn', 'agent', 'b29bee84-fa6f-4697-aaab-347993a919ad', { raceId: 'HUMAN_HIGHLAND' }],
+    [2, 'world.create', 'world', '1', { name: 'Demo', nodeCount: 92 }],
+    [3, 'zone.create', 'zone', 'zone-001', { scope: 'NODE', nodeId: 12 }],
+    [4, 'agent.teleport', 'agent', 'b29bee84-fa6f-4697-aaab-347993a919ad', { from: 12, to: 34 }],
+    [5, 'building.create', 'building', 'bld-001', { type: 'CHEST', nodeId: 34 }],
+  ];
+  return seed.map(([seq, action, target, targetId, payload]) => ({
+    seq,
+    adminId,
+    action,
+    target,
+    targetId,
+    payload,
+    tick: seq * 10,
+    occurredAt: new Date(now - (10 - seq) * 60000).toISOString(),
+  }));
+})();

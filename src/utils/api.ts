@@ -1,35 +1,32 @@
 /**
- * Auth-aware fetch wrapper. Always reads the current bearer token from localStorage and adds
- * it as `Authorization: Bearer <token>`. On 401/403 it clears the stored token and dispatches
- * an `auth:logout` event so the app can redirect to the login screen.
+ * Auth-aware fetch wrapper. The bearer token is held in memory only (ADR-0004)
+ * — a page reload signs you out. Editor screens consume this via the legacy
+ * window events (`auth:login` / `auth:logout`); the merged admin context wraps
+ * the same primitives so both halves of the app share a single token.
  */
 
 import { getApiBaseUrlOrThrow } from './apiConfig';
 
-const TOKEN_KEY = 'genesara:admin-token';
+let token: string | null = null;
 
 export function getToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+  return token;
 }
 
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+export function setToken(value: string): void {
+  token = value;
   window.dispatchEvent(new Event('auth:login'));
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+  token = null;
   window.dispatchEvent(new Event('auth:logout'));
 }
 
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  const token = getToken();
+  const t = getToken();
   const headers = new Headers(init.headers);
-  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (t) headers.set('Authorization', `Bearer ${t}`);
   const res = await fetch(input, { ...init, headers });
   if (res.status === 401 || res.status === 403) {
     // Token is bad or missing — drop it so the app falls back to the login screen.

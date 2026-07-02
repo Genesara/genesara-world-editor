@@ -16,7 +16,7 @@ export const biomeGroups: BiomeGroup[] = [
   },
   {
     label: 'Water & Wetlands',
-    biomes: ['COASTAL', 'SWAMP'],
+    biomes: ['OCEAN', 'COASTAL', 'SWAMP'],
   },
   {
     label: 'Frontier',

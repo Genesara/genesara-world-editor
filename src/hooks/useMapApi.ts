@@ -13,7 +13,8 @@ export interface MapApi {
   loading: boolean;
   error: string | null;
   clearError: () => void;
-  load: () => Promise<Node[]>;
+  /** Optional `radius` overrides the scope's `initialRadius` for this single call. */
+  load: (radius?: number) => Promise<Node[]>;
   save: (nodes: Node[]) => Promise<{ updated: number }>;
 }
 
@@ -27,24 +28,27 @@ export function useMapApi(scope: MapApiScope): MapApi {
 
   const clearError = useCallback(() => setError(null), []);
 
-  const load = useCallback(async (): Promise<Node[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const base = buildUrl();
-      const radius = scope.initialRadius;
-      const target = radius == null ? base : `${base}?radius=${radius}`;
-      const res = await authFetch(target);
-      if (!res.ok) throw new Error(`Load failed: ${res.status} ${res.statusText}`);
-      return (await res.json()) as Node[];
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error loading map';
-      setError(msg);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [buildUrl, scope.initialRadius]);
+  const load = useCallback(
+    async (overrideRadius?: number): Promise<Node[]> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const base = buildUrl();
+        const radius = overrideRadius ?? scope.initialRadius;
+        const target = radius == null ? base : `${base}?radius=${radius}`;
+        const res = await authFetch(target);
+        if (!res.ok) throw new Error(`Load failed: ${res.status} ${res.statusText}`);
+        return (await res.json()) as Node[];
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error loading map';
+        setError(msg);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [buildUrl, scope.initialRadius],
+  );
 
   const save = useCallback(
     async (nodes: Node[]): Promise<{ updated: number }> => {

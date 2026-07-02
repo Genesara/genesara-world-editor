@@ -1,0 +1,134 @@
+.root {
+  position: fixed;
+  z-index: 1000;
+  min-width: 240px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 6px;
+  font-family: var(--body);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.header {
+  padding: 8px 8px 10px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 4px;
+}
+
+.headerTitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.headerSubtitle {
+  font-family: var(--body);
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 2px;
+}
+
+.row + .row {
+  margin-top: 2px;
+}
+
+.row:hover:not(.rowDisabled) {
+  background: rgba(232, 229, 222, 0.04);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.labelName {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.labelCaption {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.labelCheck {
+  color: var(--friendly);
+  margin-right: 4px;
+}
+
+.btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 2px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  cursor: pointer;
+  font-family: var(--body);
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 80ms linear, border-color 80ms linear;
+}
+
+.btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btnDanger {
+  border-color: var(--hostile);
+  background: transparent;
+  color: var(--hostile);
+  font-weight: 500;
+}
+
+.btnDanger:hover {
+  background: var(--hostile);
+  color: var(--bg);
+}
+
+.btnGhost {
+  border-color: var(--rule);
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.btnGhost:hover {
+  border-color: var(--text-dim);
+}
+
+.rowDisabled .btn {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.empty {
+  padding: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
