@@ -1,238 +1,213 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import type { Node, TerrainType } from '../../types';
+import type { Node } from '../../types';
 import { axialToWorld, HEX_3D_SIZE } from '../../utils/hexTo3D';
 import { terrainTiles } from '../../utils/terrainTiles';
-import { decorations, type DecorationSpec } from '../../utils/decorations';
-import { makeDecorationGeometry, makeHexDisc, makeHexPrism, makeHexRim } from '../../utils/hexGeometry';
+import {
+  TERRAIN_GLB,
+  TILE_RADIUS_K,
+  WATER_TERRAIN,
+  placeProps,
+  type PlacedProp,
+  type TileForProps,
+} from '../../utils/terrainProps3D';
 
-const RIM_HEIGHT = 0.04;
-const RIM_LIGHTEN = 0.08;
+// KayKit Medieval Hexagon Pack geometry (public/models/terrain.glb, see
+// public/CREDITS-ASSETS.md). Tiles render as two instanced draws (land
+// prism, sunken water tile) with per-instance terrain tint; props render as
+// one instanced draw per prop type with the original KayKit atlas. Draw
+// calls stay constant no matter how many tiles are painted.
+useGLTF.preload(TERRAIN_GLB);
 
-const TMP_MATRIX = new THREE.Matrix4();
-const TMP_QUAT = new THREE.Quaternion();
-const TMP_POS = new THREE.Vector3();
-const TMP_SCALE = new THREE.Vector3();
+const _obj = new THREE.Object3D();
+const _color = new THREE.Color();
 
-/** Cheap deterministic hash of an axial coord. */
-function hashCoord(q: number, r: number, salt: number): number {
-  let h = ((q | 0) * 73856093) ^ ((r | 0) * 19349663) ^ (salt * 83492791);
-  h ^= h >>> 16;
-  return Math.abs(h | 0);
-}
+// Visuals never raycast — hover/paint picking is HexPickerLayer's job.
+const noRaycast: THREE.Mesh['raycast'] = () => {};
 
-/** Lighten a hex color by a 0–1 factor (toward white). */
-function lighten(hex: string, amount: number): string {
-  const c = new THREE.Color(hex);
-  c.lerp(new THREE.Color('#ffffff'), amount);
-  return `#${c.getHexString()}`;
-}
+// terrain.glb is baked flat-top; the editor grid is pointy-top. Hexes have
+// 6-fold symmetry, so a 30° turn about Y converts one to the other.
+const FLAT_TO_POINTY = Math.PI / 6;
 
-/* -------------------------------------------------------------------------- */
-/*  Hex prism group (one per terrain)                                         */
-/* -------------------------------------------------------------------------- */
-
-interface PrismProps {
-  terrain: TerrainType;
-  hexes: Node[];
-}
-
-function HexPrismGroup({ terrain, hexes }: PrismProps) {
-  const tile = terrainTiles[terrain];
-
-  const sideGeom = useMemo(() => makeHexPrism(HEX_3D_SIZE, tile.height), [tile.height]);
-  const topGeom = useMemo(() => makeHexDisc(HEX_3D_SIZE * 0.998), []);
-  const rimGeom = useMemo(
-    () => makeHexRim(HEX_3D_SIZE * 1.005, HEX_3D_SIZE * 0.94),
-    [],
-  );
-
-  // Dispose geometries when they're replaced.
-  useEffect(() => () => sideGeom.dispose(), [sideGeom]);
-  useEffect(() => () => topGeom.dispose(), [topGeom]);
-  useEffect(() => () => rimGeom.dispose(), [rimGeom]);
-
-  const sideRef = useRef<THREE.InstancedMesh>(null);
-  const topRef = useRef<THREE.InstancedMesh>(null);
-  const rimRef = useRef<THREE.InstancedMesh>(null);
-
-  useEffect(() => {
-    const sm = sideRef.current;
-    const tm = topRef.current;
-    const rm = rimRef.current;
-    if (!sm || !tm || !rm) return;
-    hexes.forEach((node, i) => {
-      const { x, z } = axialToWorld(node.q, node.r, HEX_3D_SIZE);
-      TMP_MATRIX.makeTranslation(x, 0, z);
-      sm.setMatrixAt(i, TMP_MATRIX);
-      TMP_MATRIX.makeTranslation(x, tile.height + 0.001, z);
-      tm.setMatrixAt(i, TMP_MATRIX);
-      TMP_MATRIX.makeTranslation(x, tile.height + RIM_HEIGHT, z);
-      rm.setMatrixAt(i, TMP_MATRIX);
-    });
-    sm.instanceMatrix.needsUpdate = true;
-    tm.instanceMatrix.needsUpdate = true;
-    rm.instanceMatrix.needsUpdate = true;
-    sm.count = hexes.length;
-    tm.count = hexes.length;
-    rm.count = hexes.length;
-  }, [hexes, tile.height]);
-
-  return (
-    <group>
-      <instancedMesh
-        ref={sideRef}
-        args={[sideGeom, undefined, Math.max(hexes.length, 1)]}
-        castShadow
-        receiveShadow
-      >
-        <meshStandardMaterial
-          color={tile.sideColor}
-          roughness={tile.roughness}
-          metalness={0}
-        />
-      </instancedMesh>
-      <instancedMesh
-        ref={topRef}
-        args={[topGeom, undefined, Math.max(hexes.length, 1)]}
-        receiveShadow
-      >
-        <meshStandardMaterial
-          color={tile.topColor}
-          roughness={tile.roughness}
-          metalness={0}
-        />
-      </instancedMesh>
-      <instancedMesh
-        ref={rimRef}
-        args={[rimGeom, undefined, Math.max(hexes.length, 1)]}
-      >
-        <meshStandardMaterial
-          color={lighten(tile.topColor, RIM_LIGHTEN)}
-          roughness={Math.max(0, tile.roughness - 0.1)}
-          metalness={0}
-        />
-      </instancedMesh>
-    </group>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Decoration group (one per terrain that has a decoration)                  */
-/* -------------------------------------------------------------------------- */
-
-interface DecorationProps {
-  terrain: TerrainType;
-  hexes: Node[];
-}
-
-interface Placement {
+interface TilePlacement {
   x: number;
-  y: number;
   z: number;
-  scale: number;
-  rotationY: number;
+  height: number;
+  color: string;
 }
 
-function placementsFor(spec: DecorationSpec, terrain: TerrainType, hexes: Node[]): Placement[] {
-  const out: Placement[] = [];
-  const top = terrainTiles[terrain].height;
-  for (const node of hexes) {
-    const spawn = hashCoord(node.q, node.r, 1) % 100;
-    if (spawn >= spec.chance) continue;
-    const { x, z } = axialToWorld(node.q, node.r, HEX_3D_SIZE);
-    for (let i = 0; i < spec.count; i++) {
-      const h = hashCoord(node.q, node.r, 100 + i);
-      const angle = ((h >>> 8) % 1024) / 1024 * Math.PI * 2;
-      const dist =
-        spec.kind === 'water_shimmer' || spec.kind === 'bridge_plank'
-          ? 0
-          : (((h >>> 4) % 1024) / 1024) * HEX_3D_SIZE * 0.45;
-      const jitter = ((h & 0xff) / 255 - 0.5) * 0.25; // ±12.5%
-      out.push({
-        x: x + Math.cos(angle) * dist,
-        y: top,
-        z: z + Math.sin(angle) * dist,
-        scale: spec.scale * (1 + jitter),
-        rotationY: ((h >>> 16) & 0x3ff) / 1024 * Math.PI * 2,
-      });
-    }
-  }
-  return out;
-}
-
-function DecorationGroup({ terrain, hexes }: DecorationProps) {
-  const spec = decorations[terrain];
-  const geom = useMemo(() => (spec ? makeDecorationGeometry(spec.kind) : null), [spec]);
-  useEffect(() => () => geom?.dispose(), [geom]);
-
-  const placements = useMemo(
-    () => (spec ? placementsFor(spec, terrain, hexes) : []),
-    [spec, terrain, hexes],
-  );
-
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-
-  useEffect(() => {
-    const mesh = meshRef.current;
+function TileLayer({
+  tiles,
+  geometry,
+  material,
+}: {
+  tiles: TilePlacement[];
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
     if (!mesh) return;
-    placements.forEach((p, i) => {
-      TMP_POS.set(p.x, p.y, p.z);
-      TMP_QUAT.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.rotationY);
-      TMP_SCALE.set(p.scale, p.scale, p.scale);
-      TMP_MATRIX.compose(TMP_POS, TMP_QUAT, TMP_SCALE);
-      mesh.setMatrixAt(i, TMP_MATRIX);
+    const r = HEX_3D_SIZE * TILE_RADIUS_K;
+    tiles.forEach((t, i) => {
+      // Geometry top sits at y=0 with a unit-deep skirt, so translating to
+      // the tile height and y-scaling by the same lands the base at y=0.
+      _obj.position.set(t.x, t.height, t.z);
+      _obj.rotation.set(0, 0, 0);
+      _obj.scale.set(r, t.height, r);
+      _obj.updateMatrix();
+      mesh.setMatrixAt(i, _obj.matrix);
+      mesh.setColorAt(i, _color.set(t.color));
     });
     mesh.instanceMatrix.needsUpdate = true;
-    mesh.count = placements.length;
-  }, [placements]);
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [tiles]);
 
-  if (!spec || !geom || placements.length === 0) return null;
-
+  if (tiles.length === 0) return null;
   return (
     <instancedMesh
-      ref={meshRef}
-      args={[geom, undefined, Math.max(placements.length, 1)]}
+      ref={ref}
+      args={[geometry, material, tiles.length]}
       castShadow
       receiveShadow
-    >
-      <meshStandardMaterial
-        color={spec.color}
-        roughness={spec.roughness ?? 0.85}
-        metalness={spec.metalness ?? 0}
-        emissive={spec.emissive ?? '#000000'}
-        emissiveIntensity={spec.emissiveIntensity ?? 0}
-      />
-    </instancedMesh>
+      raycast={noRaycast}
+    />
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Top-level                                                                  */
-/* -------------------------------------------------------------------------- */
+function PropLayer({
+  geometry,
+  material,
+  list,
+  tinted,
+}: {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  list: PlacedProp[];
+  tinted: boolean;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    list.forEach((p, i) => {
+      _obj.position.set(p.x, p.y, p.z);
+      _obj.rotation.set(0, p.rotation, 0);
+      _obj.scale.setScalar(p.scale);
+      _obj.updateMatrix();
+      mesh.setMatrixAt(i, _obj.matrix);
+      // Tinted props carry the tile color; atlas props keep authored colors.
+      mesh.setColorAt(i, tinted ? _color.set(p.tileColor) : _color.set('#ffffff'));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [list, tinted]);
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[geometry, material, list.length]}
+      castShadow
+      receiveShadow
+      raycast={noRaycast}
+    />
+  );
+}
 
 interface Props {
   nodes: Map<string, Node>;
 }
 
 export function HexInstances({ nodes }: Props) {
-  const grouped = useMemo(() => {
-    const out = new Map<TerrainType, Node[]>();
+  const { nodes: glbNodes, materials } = useGLTF(TERRAIN_GLB);
+
+  const landGeom = useMemo(() => {
+    const g = (glbNodes.tile_land as THREE.Mesh).geometry.clone();
+    g.rotateY(FLAT_TO_POINTY);
+    return g;
+  }, [glbNodes]);
+  const waterGeom = useMemo(() => {
+    const g = (glbNodes.tile_water as THREE.Mesh).geometry.clone();
+    g.rotateY(FLAT_TO_POINTY);
+    return g;
+  }, [glbNodes]);
+
+  const landMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0.05 }),
+    [],
+  );
+  // Self-glow keeps water readable — the sunken tile sits in its neighbors'
+  // shadow and a purely lit deep-blue tile collapses to near-black.
+  const waterMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        roughness: 0.25,
+        emissive: '#2c4f73',
+        emissiveIntensity: 0.85,
+      }),
+    [],
+  );
+  const tintedPropMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.04 }),
+    [],
+  );
+
+  // Dispose the per-mount geometry clones and materials when replaced.
+  useEffect(() => () => landGeom.dispose(), [landGeom]);
+  useEffect(() => () => waterGeom.dispose(), [waterGeom]);
+  useEffect(() => () => landMat.dispose(), [landMat]);
+  useEffect(() => () => waterMat.dispose(), [waterMat]);
+  useEffect(() => () => tintedPropMat.dispose(), [tintedPropMat]);
+
+  const { land, water, propGroups } = useMemo(() => {
+    const land: TilePlacement[] = [];
+    const water: TilePlacement[] = [];
+    const forProps: TileForProps[] = [];
     for (const node of nodes.values()) {
-      const list = out.get(node.terrain);
-      if (list) list.push(node);
-      else out.set(node.terrain, [node]);
+      const { x, z } = axialToWorld(node.q, node.r, HEX_3D_SIZE);
+      const tile = terrainTiles[node.terrain];
+      (WATER_TERRAIN.has(node.terrain) ? water : land).push({
+        x,
+        z,
+        height: tile.height,
+        color: tile.topColor,
+      });
+      forProps.push({
+        q: node.q,
+        r: node.r,
+        terrain: node.terrain,
+        x,
+        z,
+        height: tile.height,
+        radius: HEX_3D_SIZE * TILE_RADIUS_K,
+        colorHex: tile.topColor,
+      });
     }
-    return out;
+    const byGroup = new Map<string, PlacedProp[]>();
+    for (const p of placeProps(forProps)) {
+      const key = `${p.prop}|${p.tinted ? 't' : 'a'}`;
+      const list = byGroup.get(key);
+      if (list) list.push(p);
+      else byGroup.set(key, [p]);
+    }
+    return { land, water, propGroups: [...byGroup.entries()] };
   }, [nodes]);
 
   return (
     <group>
-      {Array.from(grouped.entries()).map(([terrain, list]) => (
-        <HexPrismGroup key={`prism-${terrain}`} terrain={terrain} hexes={list} />
-      ))}
-      {Array.from(grouped.entries()).map(([terrain, list]) => (
-        <DecorationGroup key={`dec-${terrain}`} terrain={terrain} hexes={list} />
+      <TileLayer tiles={land} geometry={landGeom} material={landMat} />
+      <TileLayer tiles={water} geometry={waterGeom} material={waterMat} />
+      {propGroups.map(([key, list]) => (
+        <PropLayer
+          key={key}
+          geometry={(glbNodes[list[0].prop] as THREE.Mesh).geometry}
+          material={list[0].tinted ? tintedPropMat : materials.atlas}
+          list={list}
+          tinted={list[0].tinted}
+        />
       ))}
     </group>
   );

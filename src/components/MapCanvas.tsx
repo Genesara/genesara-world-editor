@@ -7,6 +7,7 @@ import { raceColorFor } from '../constants/raceColors';
 import { normalizeRaceId } from '../utils/enums';
 import { keyOf } from '../utils/keyOf';
 import type { HexGridApi } from '../hooks/useHexGrid';
+import { bakeTileSprites, type TileSpriteAtlas } from '../utils/tiles2d';
 import styles from './MapCanvas.module.css';
 
 interface MapCanvasProps {
@@ -56,6 +57,24 @@ export function MapCanvas({
     x2: number;
     y2: number;
   }>(null);
+
+  // Kenney tile sprites bake asynchronously; until then hexes fall back to
+  // flat palette fills.
+  const [sprites, setSprites] = useState<TileSpriteAtlas | null>(null);
+  useEffect(() => {
+    let alive = true;
+    bakeTileSprites().then(
+      (atlas) => {
+        if (alive) setSprites(atlas);
+      },
+      () => {
+        /* keep flat-fill fallback if assets fail to load */
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // mode tracking via refs so pointermove isn't recreating handlers
   const modeRef = useRef<null | 'paint' | 'pan' | 'select'>(null);
@@ -235,21 +254,45 @@ export function MapCanvas({
   const hoveredKey = hovered ? keyOf(hovered.q, hovered.r) : null;
   const hoveredGeom = hovered ? hexApi.geometry(hovered.q, hovered.r) : null;
 
+  // Row-sorted nodes so sprite overflow (trees poking above their hex)
+  // overlaps the row behind, painter-style.
+  const sortedNodes = useMemo(
+    () => [...nodes.values()].sort((a, b) => a.r - b.r || a.q - b.q),
+    [nodes],
+  );
+
   // Memoize references used inside sceneFunc for closure stability
   const drawHexes = useMemo(() => {
     const showGridLines = scale > 1.0;
     return (ctx: Konva.Context) => {
-      // No fill all-at-once: we must paint per-hex with its own color.
-      for (const node of nodes.values()) {
+      // No fill all-at-once: we must paint per-hex with its own sprite/color.
+      for (const node of sortedNodes) {
         const g = hexApi.geometry(node.q, node.r);
-        ctx.beginPath();
-        const c = g.corners;
-        ctx.moveTo(c[0], c[1]);
-        for (let i = 2; i < c.length; i += 2) ctx.lineTo(c[i], c[i + 1]);
-        ctx.closePath();
-        ctx.fillStyle = terrainColors[node.terrain];
-        ctx.fill();
+        if (sprites) {
+          const sprite = sprites.pick(node.terrain, node.q, node.r);
+          const k = hexApi.size / sprites.hexSize;
+          ctx.drawImage(
+            sprite,
+            g.cx - sprites.anchorX * k,
+            g.cy - sprites.anchorY * k,
+            sprite.width * k,
+            sprite.height * k,
+          );
+        } else {
+          ctx.beginPath();
+          const c = g.corners;
+          ctx.moveTo(c[0], c[1]);
+          for (let i = 2; i < c.length; i += 2) ctx.lineTo(c[i], c[i + 1]);
+          ctx.closePath();
+          ctx.fillStyle = terrainColors[node.terrain];
+          ctx.fill();
+        }
         if (showGridLines) {
+          ctx.beginPath();
+          const c = g.corners;
+          ctx.moveTo(c[0], c[1]);
+          for (let i = 2; i < c.length; i += 2) ctx.lineTo(c[i], c[i + 1]);
+          ctx.closePath();
           ctx.lineWidth = 0.8;
           ctx.strokeStyle = 'rgba(0,0,0,0.35)';
           ctx.stroke();
@@ -257,7 +300,7 @@ export function MapCanvas({
       }
     };
     // sceneFunc signature in Konva is (ctx, shape) but we only need ctx here.
-  }, [nodes, hexApi, scale]);
+  }, [sortedNodes, hexApi, scale, sprites]);
 
   const drawDirty = useMemo(() => {
     return (ctx: Konva.Context) => {

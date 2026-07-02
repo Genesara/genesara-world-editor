@@ -80,21 +80,26 @@ export function IsometricRig({ frameRadius, freeOrbit, minZoom = 0.5, maxZoom = 
         maxZoom={maxZoom}
         screenSpacePanning
       />
-      <ambientLight color="#B8C4D4" intensity={0.45} />
+      {/* Warm key with soft shadows + paper-tone sky fill + gold rim —
+          lighting recipe ported from genesara-web's WorldMap3D. */}
+      <ambientLight intensity={0.42} />
+      <hemisphereLight args={['#d6d0c2', '#141210', 0.65]} />
       <directionalLight
-        color="#FFE8C4"
+        color="#f3e9d4"
         position={[half * 0.8, half * 1.4, half * 0.6]}
-        intensity={1.1}
+        intensity={1.5}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
         shadow-camera-left={-half * 1.5}
         shadow-camera-right={half * 1.5}
         shadow-camera-top={half * 1.5}
         shadow-camera-bottom={-half * 1.5}
         shadow-camera-near={0.1}
         shadow-camera-far={half * 10}
+        shadow-bias={-0.0004}
       />
+      <directionalLight color="#c8a35e" position={[-half * 0.7, half * 0.5, -half * 0.4]} intensity={0.5} />
     </>
   );
 }

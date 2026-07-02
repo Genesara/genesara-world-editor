@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import type { Node, StarterNode, TerrainType } from '../types';
 import { terrainColors } from '../constants/terrainColors';
@@ -91,7 +91,10 @@ export function MapCanvas3D({
       <Canvas className={styles.canvas} shadows dpr={[1, 2]} gl={{ antialias: true }}>
         <color attach="background" args={['#1A2030']} />
         <IsometricRig frameRadius={frameRadius} freeOrbit={freeOrbit} />
-        <HexInstances nodes={nodes} />
+        {/* useGLTF suspends until terrain.glb streams in; picking below stays live. */}
+        <Suspense fallback={null}>
+          <HexInstances nodes={nodes} />
+        </Suspense>
         <HexPickerLayer
           coordinates={hexApi.coordinates}
           onPointer={handlePointer}
